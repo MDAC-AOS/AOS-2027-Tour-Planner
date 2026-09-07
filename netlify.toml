@@ -1,0 +1,7 @@
+# Generates config.js at build time from Netlify environment variables,
+# so the real Sheet ID and Google Maps API key never live in the git repo.
+# Set SHEET_ID, SHEET_GID, and GOOGLE_MAPS_API_KEY under
+# Site configuration -> Environment variables in the Netlify dashboard.
+[build]
+  command = "printf \"const CONFIG = {\\n  SHEET_ID: '%s',\\n  SHEET_GID: '%s',\\n  GOOGLE_MAPS_API_KEY: '%s',\\n};\\n\" \"$SHEET_ID\" \"$SHEET_GID\" \"$GOOGLE_MAPS_API_KEY\" > config.js"
+  publish = "."
