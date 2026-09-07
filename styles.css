@@ -1408,6 +1408,34 @@ main {
   color: var(--color-text);
 }
 
+/* Every uploaded photo shown in full via object-fit: contain, unlike the
+   cropped hero carousel above — #fafafa fills the letterboxed space so an
+   image that doesn't match the box's aspect ratio isn't padded with a
+   jarring color. */
+.photo-gallery {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.photo-gallery__item {
+  flex: 0 0 200px;
+  width: 200px;
+  aspect-ratio: 4 / 3;
+  background: #fafafa;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.photo-gallery__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
 .directions-btn {
   display: inline-flex;
   align-items: center;

@@ -150,6 +150,29 @@ function photoMarkup(imageUrls, name) {
   `;
 }
 
+// Every uploaded photo shown in full (object-fit: contain), unlike the
+// cropped hero carousel above — so a visitor can see the whole image
+// regardless of its original orientation, including the one already used
+// as the hero.
+function photoGalleryHtml(imageUrls, name) {
+  if (imageUrls.length === 0) return '';
+  const items = imageUrls
+    .map(
+      (url) => `
+        <div class="photo-gallery__item">
+          <img src="${escapeHtml(url)}" alt="${escapeHtml(name)}" loading="lazy" onerror="this.closest('.photo-gallery__item').remove()">
+        </div>
+      `
+    )
+    .join('');
+  return `
+    <div class="detail-section">
+      <div class="detail-section__label">Photo Gallery</div>
+      <div class="photo-gallery">${items}</div>
+    </div>
+  `;
+}
+
 function socialPlatformLabel(url) {
   const lower = url.toLowerCase();
   if (lower.includes('instagram.com')) return 'Instagram';
@@ -651,6 +674,7 @@ function renderDetail() {
     ${artist.website ? `<div class="detail-section"><div class="detail-section__label">Website</div><p><a href="${escapeHtml(artist.website)}" target="_blank" rel="noopener">${escapeHtml(artist.website)}</a></p></div>` : ''}
     ${socialLinks.length ? `<div class="detail-section"><div class="detail-section__label">Social Media</div><div class="detail-social-links">${socialLinks.map((url) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="detail-social-link">${escapeHtml(socialPlatformLabel(url))} ↗</a>`).join('')}</div></div>` : ''}
     ${artist.accessibilityNotes ? `<div class="detail-section"><div class="detail-section__label">Accessibility Options</div><p>${escapeHtml(artist.accessibilityNotes)}</p></div>` : ''}
+    ${photoGalleryHtml(imageUrls, name)}
     <button type="button" class="detail-add-btn ${inPlan ? 'detail-add-btn--active' : ''}" data-add-id="${artist.id}">${inPlan ? '✓ In My Day — remove' : 'Add to My Day'}</button>
   `;
 }
