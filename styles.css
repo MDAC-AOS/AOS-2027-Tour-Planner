@@ -1300,6 +1300,25 @@ main {
   background: #e8e8e8;
 }
 
+/* Anchor to the top of the source photo instead of the default center crop,
+   so faces/subjects near the top of a portrait-ish upload don't get cut off. */
+.detail-overlay__photo .card__photo {
+  object-position: top;
+}
+
+/* Peek carousel: the active photo sits large and centered, with a sliver of
+   the neighboring photo(s) visible at the edges as a hint there's more. */
+.detail-overlay__photo .gallery__track {
+  gap: 10px;
+  padding: 0 10%;
+}
+
+.detail-overlay__photo .gallery__slide {
+  flex: 0 0 80%;
+  width: 80%;
+  scroll-snap-align: center;
+}
+
 .detail-overlay__back {
   position: absolute;
   top: 16px;

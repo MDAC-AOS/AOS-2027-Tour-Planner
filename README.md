@@ -86,60 +86,70 @@ assets/photo-placeholder.png
 
 Swapping test data for live data later is just swapping `SHEET_ID`/`SHEET_GID` in config.js — nothing else to change.
 
-## Connecting the real registration sheet (later)
+## Connecting the real registration sheet
 
-The real registration sheet holds sensitive data (phone, address, SMS opt-in) that must **not** become link-viewable. Since Google Sheets sharing is per file, not per tab, the public data has to live in a **genuinely separate spreadsheet file**, fed from the real one by `IMPORTRANGE`. That derived file also does the renaming/combining, so `config.js` and the app never need to know JotForm's exact column layout — only the derived file's formulas do.
+The real registration sheet holds sensitive data (phone, email, SMS opt-in) that must **not** become link-viewable. Since Google Sheets sharing is per file, not per tab, the public data lives in a **genuinely separate spreadsheet file**, fed from the real one by `IMPORTRANGE`. That derived file does all the renaming/combining, so `config.js` and the app never need to know JotForm's exact column layout — only the derived file's formulas do.
 
-**Registration Category doesn't need any derivation on the sheet side** — it's already a real column in the source sheet with the exact clean wording the app expects (`Individual Artist`, `Artist Group`, `Artist Group: Individual Artist`, `Gallery`, `Museum`, plus sponsor-tier values like `Friend`/`Bronze`/etc.). The derived file just needs to pass it through as one of its output columns; `data.js`'s `REGISTRATION_CATEGORY_TO_TYPE` map (see above) handles turning that into a Group Type.
+**Real sheet ID:** `1_lAYp-W6zkH82dvSKIQLZoCEa-i3Dh4sluIB8Qzo0ck` (private, restricted — never share this one).
+**Derived public sheet ID:** `1l9vm7ErvCLIoewmitClRYxKg3DwCpNe8ZFZVDqNA4BA` (this is the one whose `gid` goes in `config.js`).
 
-The placeholders below (`<ANGLE_BRACKETS>`) need to be filled in against the real sheet's actual header row/column letters — paste that row to me and I'll fill them in for you instead of guessing.
+> ⚠️ **The real sheet's response tab is named `Artist Registrations Source`, not JotForm's default `Form Responses 1`.** This has already caused a `#REF!` error twice from the tab name reverting to the JotForm default when the formulas were rebuilt. **Double-check this tab name specifically** any time the `Import` tab formula is touched — it's the single most common way this breaks.
 
-### Structure (all three tabs live in the new, separate public file)
+### Structure (all three tabs live in the derived public file)
 
-**1. `Import` tab (hidden)** — pulls *only* the specific raw columns needed for public fields out of the real sheet, in this order: Registration Category, Full Name, County, Studio/Venue Name, Street, Street 2/Suite, City, Zip, Medium, Artist Bio, Image URL, Saturday Hours, Sunday Hours, Website, Social Media, Accessibility Notes, Directions Notes, Tour Participation Count, Latitude, Longitude, Studio Group Artist Names (21 columns, A–U). Phone and SMS Opt-In are never referenced, so they never enter this file even transiently. One formula in `A1` (with header row included via the trailing `1`):
+**1. `Import` tab (hidden)** — pulls only these columns, by real-sheet letter: A, F, G, H, K, N, O, P, Q, R, S, T, U, W, X, Y, Z, AA, AB, AC, AM, AE, AG, AI, AJ. **Never** references Email (J), the email-consent checkbox (L), or SMS opt-in (M) — those never enter this file even transiently.
+
+> ⚠️ **Column letters shift whenever a column is inserted into the real sheet** — this happened once already when a `GEOCODE` formula was added at AC/AD (Latitude/Longitude), which pushed everything after it (tour days, parking/directions, accessibility) two letters to the right. **Before editing this query, re-fetch the real sheet's current header row and re-derive letters from scratch rather than assuming the list below is still accurate** — don't just patch in new columns without checking whether existing ones moved.
+>
+> **Longitude specifically comes from AM, not AD.** AD is a spill target of the `GEOCODE` formula anchored in AC (no formula of its own), and `IMPORTRANGE` can't see spilled values in cells that don't hold their own formula — it silently came through blank. AM is a helper column (`=ARRAYFORMULA(IF(AD2:AD="","",AD2:AD))`) added specifically so Longitude has a real formula `IMPORTRANGE` can read. If Latitude/Longitude ever go missing again, check whether AM still exists and still points at AD before assuming the query is wrong.
 
 ```
-=QUERY(IMPORTRANGE("<REAL_SHEET_URL_OR_ID>", "<REAL_TAB_NAME>!A1:<LAST_COL>"),
-  "select Col<REG_CATEGORY>, Col<FULL_NAME>, Col<COUNTY>, Col<VENUE_NAME>, Col<STREET>, Col<STREET2>, Col<CITY>, Col<ZIP>, Col<MEDIUM>, Col<BIO>, Col<IMAGE_URL>, Col<SAT_HOURS>, Col<SUN_HOURS>, Col<WEBSITE>, Col<SOCIAL>, Col<ACCESSIBILITY>, Col<DIRECTIONS>, Col<PARTICIPATION_COUNT>, Col<LAT>, Col<LNG>, Col<STUDIO_GROUP_ARTIST_NAMES>",
+=QUERY(IMPORTRANGE("1_lAYp-W6zkH82dvSKIQLZoCEa-i3Dh4sluIB8Qzo0ck", "Artist Registrations Source!A1:AM"),
+  "select Col1, Col6, Col7, Col8, Col11, Col14, Col15, Col16, Col17, Col18, Col19, Col20, Col21, Col23, Col24, Col25, Col26, Col27, Col28, Col29, Col39, Col31, Col33, Col35, Col36",
   1)
 ```
 
-`ColN` refers to position in the imported range (Col1 = column A of `<REAL_TAB_NAME>`, Col2 = column B, etc.) — first authorization between the two files happens automatically the first time this runs. Keep the select order matching the 21-column list above so the `Import!` references below (A–U) line up.
+Import's resulting columns (A–Y): A=registration type, B=first name, C=last name, D=group artist names, E=phone, F=website, G=Instagram, H=Facebook, I=LinkedIn, J=medium, K=participation count, L=bio, M=photo uploads, N=county, O=venue name, P=street, Q=suite, R=city, S=zip, **T=Latitude (from AC), U=Longitude (from AM, not AD — see note above)**, V=tour day(s), W=parking/directions, X=accessibility features, Y=accessibility other.
 
-**2. `Working` tab (hidden)** — one clean, renamed/combined column per field, computed with `ARRAYFORMULA`. Header row typed literally; data starts row 2:
+**2. `Working` tab (hidden)** — one clean, renamed/combined/derived column per field, computed with `ARRAYFORMULA`. Header row typed literally; data starts row 2:
 
-| Col | Header (row 1, typed literally) | Formula (row 2) |
+| Col | Header | Formula |
 |---|---|---|
-| A | `Registration Category` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!A2:A))` |
-| B | `Full Name` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!B2:B))` |
-| C | `County` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!C2:C))` |
-| D | `Studio/Venue Name` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!D2:D))` |
-| E | `Studio Address` | `=ARRAYFORMULA(IF(Import!A2:A="","",TRIM(TEXTJOIN(", ",TRUE,TEXTJOIN(" ",TRUE,Import!E2:E,Import!F2:F),Import!G2:G,Import!H2:H))))` — joins street + suite, then city, then zip, skipping any that are blank |
-| F | `Medium` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!I2:I))` |
-| G | `Artist Bio` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!J2:J))` |
-| H | `Image URL` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!K2:K))` |
-| I | `AOS Tour Days` | `=ARRAYFORMULA(IF(Import!A2:A="","",TRIM(TEXTJOIN(", ",TRUE,IF(Import!L2:L<>"","Saturday",""),IF(Import!M2:M<>"","Sunday","")))))` — assumes a separate checkbox/field per day; adjust to however the real form actually captures day selection |
-| J | `Website` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!N2:N))` |
-| K | `Social Media` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!O2:O))` |
-| L | `Accessibility Notes` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!P2:P))` |
-| M | `Directions Notes` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!Q2:Q))` |
-| N | `Tour Participation Count` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!R2:R))` |
-| O | `Latitude` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!S2:S))` |
-| P | `Longitude` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!T2:T))` |
-| Q | `Studio Group Artist Names` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!U2:U))` |
+| A | `Full Name` | `=ARRAYFORMULA(IF(Import!A2:A="","",TRIM(Import!B2:B&" "&Import!C2:C)))` — **not** "Recognition Name" (a separate, mostly sponsor-only field that's blank for most artist entries) |
+| B | `County` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!N2:N))` |
+| C | `Studio/Venue Name` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!O2:O))` |
+| D | `Studio Address` | `=ARRAYFORMULA(IF(Import!A2:A="","",REGEXREPLACE(TRIM(IF(Import!P2:P="","",Import!P2:P)&IF(Import!Q2:Q="","", " "&Import!Q2:Q)&IF(Import!R2:R="","", ", "&Import!R2:R)&IF(Import!S2:S="","", ", "&Import!S2:S)),"^,\s*","")))` |
+| E | `Phone` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!E2:E))` |
+| F | `Medium` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!J2:J))` |
+| G | `Artist Bio` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!L2:L))` |
+| H | `Image URL` | `=ARRAYFORMULA(IF(Import!A2:A="","",SUBSTITUTE(Import!M2:M,CHAR(10),", ")))` |
+| I | `AOS Tour Days` | `=ARRAYFORMULA(IF(Import!A2:A="","",SUBSTITUTE(Import!V2:V,CHAR(10),", ")))` |
+| J | `Website` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!F2:F))` |
+| K | `Social Media` | `=ARRAYFORMULA(IF(Import!A2:A="","",REGEXREPLACE(TRIM(IF(Import!G2:G="","",SUBSTITUTE(Import!G2:G,CHAR(10),", "))&IF(Import!H2:H="","", ", "&SUBSTITUTE(Import!H2:H,CHAR(10),", "))&IF(Import!I2:I="","", ", "&SUBSTITUTE(Import!I2:I,CHAR(10),", "))),"^,\s*","")))` |
+| L | `Accessibility Notes` | `=ARRAYFORMULA(IF(Import!A2:A="","",REGEXREPLACE(TRIM(IF(Import!X2:X="","",SUBSTITUTE(Import!X2:X,CHAR(10),", "))&IF(Import!Y2:Y="","", "; "&Import!Y2:Y)),"^;\s*","")))` |
+| M | `Directions Notes` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!W2:W))` |
+| N | `Tour Participation Count` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!K2:K))` |
+| O | `Latitude` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!T2:T))` |
+| P | `Longitude` | `=ARRAYFORMULA(IF(Import!A2:A="","",Import!U2:U))` |
+| Q | `Registration Category` | `=ARRAYFORMULA(IF(Import!A2:A="","",REGEXREPLACE(TRIM(Import!A2:A)," ?\(.*\)$","")))` — strips the `($100)`-style price suffix JotForm appends to the raw value |
+| R | `Studio Group Artist Names` | `=ARRAYFORMULA(IF(Import!A2:A="","",SUBSTITUTE(Import!D2:D,CHAR(10),", ")))` |
 
-**3. `Public` tab** — this is the one whose `gid` goes in `config.js`. It's just:
+**3. `Public` tab** — this is the one whose `gid` goes in `config.js`. Type the same 18 headers literally into **row 1**, then put this formula in **cell A2** (not A1 — `FILTER` spills across all 18 columns and down every matching row, so if it's entered in A1 that spill tries to overwrite the header cells in row 1 itself and Sheets throws `Array result was not expanded because it would overwrite data in K1` — K1 being the "Social Media" header, 11th of the 18 columns):
 
 ```
-=FILTER(Working!A2:Q, REGEXMATCH(Working!A2:A, "^(Individual Artist|Artist Group|Artist Group: Individual Artist|Gallery|Gallery-tier Sponsor|Museum)$"))
+=FILTER(Working!A2:R, REGEXMATCH(Working!Q2:Q, "^(Individual Artist|Artist Group|Artist Group: Individual Artist|Gallery|Gallery-tier Sponsor|Museum)$"))
 ```
 
-with the same 17 headers typed literally into row 1. This drops any row whose Registration Category isn't one of the recognized values — sponsor-tier-only registrants (Friend/Bronze/Silver/Gold/Platinum) never make it into the public file at all, same privacy intent as before, just without needing a separate derived "Not Listed" column.
+Sponsor-tier-only registrants (Friend/Bronze/Silver/Gold/Platinum) never make it into the public file at all.
 
-### Notes
+### Known gaps / things to watch
 
-- The nested `TEXTJOIN`s (Studio Address, AOS Tour Days) are a well-established pattern for row-wise combining under `ARRAYFORMULA`, but I haven't been able to run these against your actual data. Before pointing `config.js` at this file, sanity-check a handful of rows — especially any with blank address/day sub-fields — to confirm the joins look right.
-- Share only the derived file as link-viewable. The real registration sheet's sharing never changes.
+- ~~No Latitude/Longitude source anywhere~~ — **resolved**: a `GEOCODE` formula on the real sheet now auto-spills Latitude/Longitude into columns AC/AD, and the `Working` tab pulls from them directly (see Import!T/U above). This is exactly the kind of insertion the ⚠️ note further up warns about — it's what pushed tour days/directions/accessibility two columns to the right the first time.
+- **`TEXTJOIN` given multiple whole-column ranges does not combine row-by-row** — it flattens each range into one blob first, so every row ends up with the same merged value. This bit Studio Address, Social Media, and Accessibility Notes the first time these formulas were written; all three are now built with `IF()`/`&` concatenation instead, which does broadcast correctly per row. **Don't reintroduce multi-range `TEXTJOIN` if these formulas get reworked.**
+- The `IF()`/`&` rewrite above went through a second round of bugs too — hand-typing nested `IF(cell="","", "separator"&cell)` calls is genuinely easy to get wrong (a dropped comma made one `IF` a 2-argument call that returned the literal boolean `FALSE` instead of blank whenever the cell *did* have a value; a stray unquoted semicolon broke another one outright with `#ERROR!`). The versions in the table above have been verified — quote/parenthesis balance checked, and the actual logic simulated against real rows (including blank-city/zip and single-social-link cases) rather than just eyeballed. **If these three formulas (Studio Address, Social Media, Accessibility Notes) get hand-edited again, verify the same way rather than typing a fix free-hand** — it's cheap to check and this exact mistake has now happened twice.
+- Only `Individual Artist` and `Artist Group` registration-type wording has actually been confirmed against real submitted data (5-row sample). The Gallery/Museum/sponsor-tier option text is assumed to follow the same "words, then a price in parens" pattern but hasn't been directly observed — worth checking against the real JotForm dropdown options if filtering seems off for those categories.
+- **The `Public` tab's `FILTER` formula must go in cell A2, not A1.** It's an 18-column-wide spilling array — placed in A1 it tries to overwrite the row-1 header cells and throws `Array result was not expanded because it would overwrite data in K1` (K1 = the "Social Media" header). This has already happened once.
+- Share only the derived public file as link-viewable. The real registration sheet's sharing should stay restricted — it's been made link-viewable twice now (each time briefly, to re-inspect its column headers after a change) and should be set back to private after each time.
 
 ## Run it locally
 

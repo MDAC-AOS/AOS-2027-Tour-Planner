@@ -114,18 +114,42 @@ function showGroupInfoWindow(marker, group) {
   });
 }
 
-// A colored circle per Group Type, matching the legend. For a grouped pin
-// covering entries of different types, the first entry's color is used —
-// there's no single "correct" color when a location mixes group types.
+// Builds a rounded-rect (or circle, when the radius is large enough to fully
+// round it) SVG path from a CSS border-radius string, so marker shapes stay
+// in lockstep with the legend swatches' border-radius values instead of
+// needing to be redrawn by hand if those ever change.
+function roundedRectPath(x, y, size, radius) {
+  const tokens = String(radius).trim().split(/\s+/);
+  const toPx = (token) => (token.endsWith('%') ? (parseFloat(token) / 100) * size : parseFloat(token));
+  const corners = tokens.length === 4 ? tokens.map(toPx) : Array(4).fill(toPx(tokens[0]));
+  const max = size / 2;
+  const [tl, tr, br, bl] = corners.map((r) => Math.min(r, max));
+  return `M${x + tl},${y} H${x + size - tr} A${tr},${tr} 0 0 1 ${x + size},${y + tr}` +
+    ` V${y + size - br} A${br},${br} 0 0 1 ${x + size - br},${y + size} H${x + bl}` +
+    ` A${bl},${bl} 0 0 1 ${x},${y + size - bl} V${y + tl} A${tl},${tl} 0 0 1 ${x + tl},${y} Z`;
+}
+
+// A pin shaped and iconed exactly like its legend entry (same fill color,
+// glyph, and border-radius shape). For a grouped pin covering entries of
+// different types, the first entry's visuals are used — there's no single
+// "correct" look when a location mixes group types.
 function groupMarkerIcon(groupType) {
   const v = GROUP_VISUALS[groupType] || GROUP_VISUALS.Artist;
+  const size = 30;
+  const strokeWidth = 2;
+  const inset = strokeWidth / 2;
+  const boxSize = size - strokeWidth;
+  const iconSize = 16;
+  const iconOffset = (size - iconSize) / 2;
+  const shapePath = roundedRectPath(inset, inset, boxSize, v.radius);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
+    `<path d="${shapePath}" fill="${v.color}" stroke="#ffffff" stroke-width="${strokeWidth}"/>` +
+    `<g transform="translate(${iconOffset},${iconOffset}) scale(${iconSize / 20})"><path d="${v.icon}" fill="${v.ink}"/></g>` +
+    `</svg>`;
   return {
-    path: google.maps.SymbolPath.CIRCLE,
-    fillColor: v.color,
-    fillOpacity: 1,
-    strokeColor: '#ffffff',
-    strokeWeight: 2,
-    scale: 12,
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(size, size),
+    anchor: new google.maps.Point(size / 2, size / 2),
   };
 }
 

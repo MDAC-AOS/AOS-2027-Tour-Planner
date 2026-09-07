@@ -343,7 +343,7 @@ function renderList(filtered) {
   }
 
   el.grid.innerHTML = filtered.map(cardTemplate).join('');
-  wireGalleryScrollSync();
+  wireGalleryScrollSync(el.grid);
 }
 
 // ---------- map view ----------
@@ -629,6 +629,7 @@ function renderDetail() {
     <button type="button" class="detail-overlay__back" id="detail-back-inner" aria-label="Back">←</button>
   `;
   document.getElementById('detail-back-inner').addEventListener('click', closeDetail);
+  wireGalleryScrollSync(el.detailPhoto);
 
   const socialLinks = artist.socialLinks || [];
 
@@ -839,16 +840,27 @@ function setActiveGalleryDot(gallery, index) {
   });
 }
 
+// Distance between slide starts. Slides are equal-width, but on the detail
+// view's peek carousel that width is less than the track's own clientWidth,
+// so it can't be assumed to equal 100% of the track as it can for the
+// card-grid carousel's full-width slides.
+function gallerySlideStep(gallery) {
+  const slides = gallery.querySelectorAll('.gallery__slide');
+  if (slides.length < 2) return gallery.querySelector('.gallery__track')?.clientWidth || 0;
+  return slides[1].getBoundingClientRect().left - slides[0].getBoundingClientRect().left;
+}
+
 function handleDelegatedClick(e) {
   const arrow = e.target.closest('.gallery__arrow');
   if (arrow) {
     const gallery = arrow.closest('.gallery');
     const track = gallery.querySelector('.gallery__track');
+    const step = gallerySlideStep(gallery);
     const dotCount = gallery.querySelectorAll('.gallery__dot').length;
-    const currentIndex = Math.round(track.scrollLeft / track.clientWidth);
+    const currentIndex = step ? Math.round(track.scrollLeft / step) : 0;
     const direction = arrow.classList.contains('gallery__arrow--next') ? 1 : -1;
     const nextIndex = Math.min(Math.max(currentIndex + direction, 0), dotCount - 1);
-    track.scrollLeft = nextIndex * track.clientWidth;
+    track.scrollLeft = nextIndex * step;
     setActiveGalleryDot(gallery, nextIndex);
     return;
   }
@@ -856,8 +868,9 @@ function handleDelegatedClick(e) {
   if (dot) {
     const gallery = dot.closest('.gallery');
     const track = gallery.querySelector('.gallery__track');
+    const step = gallerySlideStep(gallery);
     const index = [...gallery.querySelectorAll('.gallery__dot')].indexOf(dot);
-    track.scrollLeft = index * track.clientWidth;
+    track.scrollLeft = index * step;
     setActiveGalleryDot(gallery, index);
     return;
   }
@@ -904,11 +917,13 @@ function backToDirectory() {
   render();
 }
 
-function wireGalleryScrollSync() {
-  el.grid.querySelectorAll('.gallery__track').forEach((track) => {
+function wireGalleryScrollSync(root) {
+  root.querySelectorAll('.gallery__track').forEach((track) => {
     track.addEventListener('scroll', () => {
-      const index = Math.round(track.scrollLeft / track.clientWidth);
-      setActiveGalleryDot(track.closest('.gallery'), index);
+      const gallery = track.closest('.gallery');
+      const step = gallerySlideStep(gallery);
+      const index = step ? Math.round(track.scrollLeft / step) : 0;
+      setActiveGalleryDot(gallery, index);
     });
   });
 }
@@ -962,6 +977,7 @@ async function init() {
     el.grid.addEventListener('click', handleDelegatedClick);
     el.planStops.addEventListener('click', handleDelegatedClick);
     el.detailBody.addEventListener('click', handleDelegatedClick);
+    el.detailPhoto.addEventListener('click', handleDelegatedClick);
     setStatus('');
     render();
   } catch (err) {
