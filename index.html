@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plan Your Day — Artist Open Studios Tour</title>
+  <meta name="theme-color" content="#253551">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header__top">
+      <div>
+        <p class="site-header__eyebrow">Artist Open Studios Tour 2027</p>
+        <h1 class="site-header__title">Plan Your Day</h1>
+      </div>
+      <div class="conn-pill" id="conn-pill">
+        <span class="conn-pill__dot" id="conn-dot"></span>
+        <span id="conn-label">Online</span>
+      </div>
+    </div>
+
+    <nav class="tabs" role="tablist" aria-label="View">
+      <button type="button" class="tabs__btn tabs__btn--active" data-view="list" role="tab" aria-selected="true">Directory</button>
+      <button type="button" class="tabs__btn" data-view="map" role="tab" aria-selected="false">Map</button>
+      <button type="button" class="tabs__btn" data-view="plan" role="tab" aria-selected="false">My Day <span id="plan-count-label"></span></button>
+    </nav>
+  </header>
+
+  <main>
+    <aside class="sidebar" id="sidebar" aria-label="Filter listings">
+      <div class="sidebar__header">
+        <div class="sidebar__title">Filters</div>
+        <button type="button" id="reset-filters-side" class="link-btn">Reset</button>
+      </div>
+      <div class="chip-filters__group">
+        <div class="chip-filters__label">Group Type</div>
+        <div class="chip-col" id="chips-group-side"></div>
+      </div>
+      <div class="chip-filters__group">
+        <div class="chip-filters__label">County</div>
+        <div class="chip-col" id="chips-county-side"></div>
+      </div>
+      <div class="chip-filters__group">
+        <div class="chip-filters__label">Medium</div>
+        <div class="chip-col" id="chips-medium-side"></div>
+      </div>
+      <div class="sidebar__note">Your plan is saved on this device and works without signal.</div>
+    </aside>
+
+    <section class="chip-filters" id="chip-filters" aria-label="Filter listings">
+      <div class="chip-filters__group">
+        <div class="chip-filters__label">Group Type</div>
+        <div class="chip-row" id="chips-group"></div>
+      </div>
+      <div class="chip-filters__group">
+        <div class="chip-filters__label">County</div>
+        <div class="chip-row" id="chips-county"></div>
+      </div>
+      <div class="chip-filters__group">
+        <div class="chip-filters__label">Medium</div>
+        <div class="chip-row" id="chips-medium"></div>
+      </div>
+      <div class="chip-filters__meta">
+        <span id="result-count" aria-live="polite"></span>
+        <button type="button" id="reset-filters" class="link-btn">Reset</button>
+      </div>
+    </section>
+
+    <p id="status-message" class="status-message" role="status" hidden></p>
+
+    <section class="card-grid" id="card-grid" aria-live="polite"></section>
+
+    <div class="rail" id="rail">
+      <nav class="rail-tabs" id="rail-tabs" aria-label="Map or My Day">
+        <button type="button" class="rail-tabs__btn rail-tabs__btn--active" data-rail="map">Map</button>
+        <button type="button" class="rail-tabs__btn" data-rail="plan">My Day <span id="rail-plan-count"></span></button>
+      </nav>
+
+      <section class="map-view" id="map-view" hidden>
+        <p id="map-status" class="status-message" role="status" hidden></p>
+        <div id="map" class="map"></div>
+        <div class="map-legend">
+          <div class="map-legend__title">Legend — pins by group type</div>
+          <div class="map-legend__grid" id="map-legend-grid"></div>
+          <div class="map-legend__note">Pins follow both filters.</div>
+        </div>
+      </section>
+
+      <section class="plan-view" id="plan-view" hidden>
+        <div class="plan-header">
+          <div class="plan-header__text">
+            <div class="plan-header__title" id="plan-title"></div>
+            <div class="plan-header__summary" id="plan-summary"></div>
+          </div>
+          <button type="button" class="plan-header__share" id="plan-share-btn" title="Share my day" aria-label="Share my day">
+            <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
+              <circle cx="15" cy="4.5" r="2.6" fill="#253551"></circle>
+              <circle cx="15" cy="15.5" r="2.6" fill="#253551"></circle>
+              <circle cx="5" cy="10" r="2.6" fill="#253551"></circle>
+              <path d="M7.3 8.8 L12.7 5.7 M7.3 11.2 L12.7 14.3" stroke="#253551" stroke-width="1.6" stroke-linecap="round"></path>
+            </svg>
+          </button>
+        </div>
+
+        <div class="day-tabs" id="day-tabs">
+          <button type="button" class="day-tabs__btn day-tabs__btn--active" data-day="Saturday" id="day-tab-sat"></button>
+          <button type="button" class="day-tabs__btn" data-day="Sunday" id="day-tab-sun"></button>
+        </div>
+
+        <div class="plan-map-wrap" id="plan-map-wrap" hidden>
+          <div id="plan-map" class="plan-map"></div>
+        </div>
+
+        <div class="share-panel" id="share-panel" hidden></div>
+
+        <div class="plan-stops" id="plan-stops"></div>
+
+        <div class="plan-empty" id="plan-empty" hidden>
+          <div class="plan-empty__dot"></div>
+          <div class="plan-empty__title" id="plan-empty-title"></div>
+          <p class="plan-empty__hint">Tap Add on any stop and choose the day you're planning it for.</p>
+        </div>
+
+        <div class="plan-footer-note">This list works without signal. Your plan is saved on this device.</div>
+      </section>
+    </div>
+  </main>
+
+  <button type="button" class="back-to-top" id="back-to-top-directory" hidden aria-label="Back to top">↑ Top</button>
+  <button type="button" class="back-to-top back-to-top--plan" id="back-to-top-plan" hidden aria-label="Back to top">↑ Top</button>
+
+  <div class="detail-overlay" id="detail-overlay" hidden>
+    <div class="detail-overlay__photo" id="detail-photo">
+      <button type="button" class="detail-overlay__back" id="detail-back" aria-label="Back">←</button>
+    </div>
+    <div class="detail-overlay__body" id="detail-body"></div>
+  </div>
+
+  <div class="picker-modal" id="picker-modal" hidden>
+    <div class="picker-modal__card">
+      <p class="picker-modal__note" id="picker-note"></p>
+      <div class="picker-modal__actions">
+        <button type="button" id="picker-sat" class="picker-modal__btn"></button>
+        <button type="button" id="picker-sun" class="picker-modal__btn"></button>
+      </div>
+      <button type="button" id="picker-cancel" class="link-btn">Cancel</button>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="data.js"></script>
+  <script src="map.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

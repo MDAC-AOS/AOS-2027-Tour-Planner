@@ -1,0 +1,18 @@
+{
+  "name": "Artist Open Studios Tour",
+  "short_name": "AOS Tour",
+  "description": "Browse and plan your visits for the Artist Open Studios Tour.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f7f7",
+  "theme_color": "#253551",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

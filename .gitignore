@@ -1,0 +1,9 @@
+.DS_Store
+
+# Holds a live Google Maps API key and sheet ID — copy config.example.js
+# to config.js and fill in your own values.
+config.js
+
+# Bundled Claude Design export used only to extract the original mockup —
+# not part of the app, safe to keep out of the repo.
+Plan Your Day (standalone).html
