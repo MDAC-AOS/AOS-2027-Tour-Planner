@@ -1,4 +1,5 @@
 const PLAN_STORAGE_KEY = 'aosPlanV1';
+const INSTALL_PROMPT_DISMISSED_KEY = 'aosInstallPromptDismissedV1';
 
 const WIDE_QUERY = '(min-width: 1024px)';
 
@@ -57,6 +58,10 @@ const el = {
   detailPhoto: document.getElementById('detail-photo'),
   detailBody: document.getElementById('detail-body'),
   detailBack: document.getElementById('detail-back'),
+  installBanner: document.getElementById('install-banner'),
+  installBannerText: document.getElementById('install-banner-text'),
+  installBannerAction: document.getElementById('install-banner-action'),
+  installBannerDismiss: document.getElementById('install-banner-dismiss'),
   pickerModal: document.getElementById('picker-modal'),
   pickerNote: document.getElementById('picker-note'),
   pickerSat: document.getElementById('picker-sat'),
@@ -649,11 +654,10 @@ function renderDetail() {
   const inPlan = isInPlan(artist.id);
 
   el.detailPhoto.innerHTML = `
-    ${photoMarkup(imageUrls, name)}
+    ${photoMarkup(imageUrls.slice(0, 1), name)}
     <button type="button" class="detail-overlay__back" id="detail-back-inner" aria-label="Back">←</button>
   `;
   document.getElementById('detail-back-inner').addEventListener('click', closeDetail);
-  wireGalleryScrollSync(el.detailPhoto);
 
   const socialLinks = artist.socialLinks || [];
 
@@ -860,6 +864,72 @@ function wireDetailBack() {
   el.detailBack.addEventListener('click', closeDetail);
 }
 
+// ---------- install prompt banner ----------
+
+// PWAs don't install automatically, so this nudges mobile visitors toward
+// adding the app to their home screen — iOS has no install API at all
+// (Share sheet only), Android/Chrome exposes a real native prompt via
+// `beforeinstallprompt` when install criteria are met, but that fires
+// async and isn't guaranteed, so a text fallback covers the gap.
+let deferredInstallPrompt = null;
+
+function isRunningStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function detectInstallPlatform() {
+  const ua = navigator.userAgent || '';
+  // Check Android's unambiguous UA token first — the iPadOS 13+ heuristic
+  // below (reporting itself as desktop Mac Safari, distinguishable only by
+  // having touch points) is inherently fuzzier and would otherwise
+  // false-positive on any touch-capable device whose platform string
+  // happens to read "MacIntel".
+  if (/Android/.test(ua)) return 'android';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (isIOS) return 'ios';
+  return null;
+}
+
+function dismissInstallBanner() {
+  el.installBanner.hidden = true;
+  localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, '1');
+}
+
+function maybeShowInstallBanner() {
+  if (isRunningStandalone() || localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY)) return;
+  const platform = detectInstallPlatform();
+  if (!platform) return;
+
+  if (platform === 'ios') {
+    el.installBannerText.textContent = 'Install this app: tap the Share icon (square with an arrow), then "Add to Home Screen."';
+    el.installBannerAction.hidden = true;
+  } else if (deferredInstallPrompt) {
+    el.installBannerText.textContent = 'Add this app to your home screen for quick, one-tap access.';
+    el.installBannerAction.hidden = false;
+  } else {
+    el.installBannerText.textContent = 'Install this app: tap the menu (⋮), then "Add to Home Screen" or "Install app."';
+    el.installBannerAction.hidden = true;
+  }
+  el.installBanner.hidden = false;
+}
+
+function wireInstallPrompt() {
+  el.installBannerDismiss.addEventListener('click', dismissInstallBanner);
+  el.installBannerAction.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    dismissInstallBanner();
+  });
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    maybeShowInstallBanner();
+  });
+  maybeShowInstallBanner();
+}
+
 // Delegated click handling shared by list cards, plan stop rows, and the
 // detail overlay: gallery arrows/dots, opening detail, add/remove/swap.
 function setActiveGalleryDot(gallery, index) {
@@ -972,6 +1042,7 @@ async function init() {
   renderConnection();
   window.addEventListener('online', renderConnection);
   window.addEventListener('offline', renderConnection);
+  wireInstallPrompt();
 
   try {
     state.all = await loadArtists();
@@ -1006,7 +1077,6 @@ async function init() {
     el.grid.addEventListener('click', handleDelegatedClick);
     el.planStops.addEventListener('click', handleDelegatedClick);
     el.detailBody.addEventListener('click', handleDelegatedClick);
-    el.detailPhoto.addEventListener('click', handleDelegatedClick);
     setStatus('');
     render();
   } catch (err) {
