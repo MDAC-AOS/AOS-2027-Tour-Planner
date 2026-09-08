@@ -1,14 +1,12 @@
 :root {
   --color-bg: #f7f7f7;          /* Bright Snow */
   --color-flag-red: #ca2e1d;
-  --color-carrot-orange: #f4962a;
   --color-bright-gold: #fad62a;
   --color-fresh-sky: #59b5e7;
   --color-twilight-indigo: #253551;
-  --color-black: #000000;
 
   --color-card-bg: #ffffff;
-  --color-text: var(--color-black);
+  --color-text: #000000;
   --color-text-muted: #4a4a4a;
 
   --font-heading: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -672,7 +670,7 @@ main {
   color: var(--color-bg);
 }
 
-.tag-outline {
+.tag-accent {
   font-family: var(--font-meta);
   font-size: 0.65rem;
   letter-spacing: 0.08em;
@@ -967,6 +965,14 @@ main {
   box-shadow: 0 2px 0 rgba(37, 53, 81, 0.1);
 }
 
+.plan-stop__order {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
 .plan-stop__num {
   flex-shrink: 0;
   width: 30px;
@@ -977,6 +983,27 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.reorder-btn {
+  width: 22px;
+  height: 18px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 4px;
+  background: rgba(37, 53, 81, 0.08);
+  color: var(--color-twilight-indigo);
+  font-size: 0.6rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reorder-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 
 .plan-stop__body {
@@ -1198,7 +1225,7 @@ main {
 
 .share-panel__tiles {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
   gap: 7px;
   margin-top: 10px;
 }
@@ -1218,7 +1245,8 @@ main {
   display: block;
 }
 
-.share-tile--disabled {
+.share-tile--disabled,
+.share-tile:disabled {
   opacity: 0.35;
   cursor: default;
 }
@@ -1273,36 +1301,6 @@ main {
 .email-send-btn--sent {
   background: var(--color-twilight-indigo);
   color: var(--color-bright-gold);
-}
-
-.share-panel__optin {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin-top: 10px;
-  cursor: pointer;
-}
-
-.checkbox {
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 0.8rem;
-  background: #ffffff;
-  color: transparent;
-  border: 1.5px solid rgba(37, 53, 81, 0.35);
-}
-
-.checkbox--checked {
-  background: var(--color-twilight-indigo);
-  color: var(--color-bright-gold);
-  border-color: var(--color-twilight-indigo);
 }
 
 .share-panel__sent-note {

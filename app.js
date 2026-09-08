@@ -5,6 +5,11 @@ const WIDE_QUERY = '(min-width: 1024px)';
 
 const state = {
   all: [],
+  // `view` drives the narrow-layout tab bar: 'list' | 'map' | 'plan', one
+  // visible at a time. `railView` drives the wide-layout rail, which shows
+  // the card list *and* a persistent side panel that toggles between
+  // 'map' | 'plan' — see render()'s showingMap/showingPlan for how the two
+  // combine per breakpoint.
   view: 'list',
   railView: 'map',
   filters: { groupType: 'all', county: 'all', medium: 'all' },
@@ -16,7 +21,6 @@ const state = {
   copied: false,
   emailOpen: false,
   email: '',
-  optIn: false,
   emailSent: false,
   incomingShare: null,
 };
@@ -102,10 +106,6 @@ function bioExcerpt(bio, maxLength = 140) {
   const truncated = text.slice(0, maxLength);
   const lastSpace = truncated.lastIndexOf(' ');
   return `${truncated.slice(0, lastSpace > 0 ? lastSpace : maxLength)}…`;
-}
-
-function groupTypeClass(groupType) {
-  return `tag--${groupType.toLowerCase().replace(/\s+/g, '-')}`;
 }
 
 function initials(name) {
@@ -233,16 +233,58 @@ function findArtist(id) {
   return state.all.find((a) => a.id === id);
 }
 
+// Everything the UI derives from Registration Category, computed once so
+// the three call sites below (name, card, detail view) can't drift out of
+// sync with each other if this logic ever needs to change.
+function listingMeta(artist) {
+  const category = (artist.registrationCategory || '').trim().toLowerCase();
+  const isArtistGroup = category === 'artist group';
+  const showsVenueName = isArtistGroup || category === 'gallery' || category === 'museum';
+  const showsMedium = category === 'individual artist' || category === 'artist group: individual artist';
+  return {
+    showsVenueName,
+    memberNames: isArtistGroup ? (artist.groupMemberNames || []) : [],
+    medium: showsMedium ? (artist.medium || '') : '',
+  };
+}
+
 // Artist Group / Gallery / Museum entries always collect a point-of-contact
 // Full Name on the form too, so presence alone can't be used to decide which
 // name to show — Registration Category decides instead.
 function displayName(artist) {
-  const category = (artist.registrationCategory || '').trim().toLowerCase();
-  const showsVenueName = category === 'artist group' || category === 'gallery' || category === 'museum';
-  if (showsVenueName) {
+  if (listingMeta(artist).showsVenueName) {
     return artist.studioVenueName || artist.fullName || 'Untitled Listing';
   }
   return artist.fullName || artist.studioVenueName || 'Untitled Listing';
+}
+
+function slugify(text) {
+  return String(text)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// A stable ID derived from name + county, so it survives across page loads
+// and stays valid in a shared "My Day" link even if the underlying sheet's
+// row order changes (unlike an array-index ID, which would silently point
+// at a different artist if a row above it were ever deleted or reordered).
+function deriveArtistId(artist) {
+  return slugify(`${displayName(artist)}-${artist.county || ''}`) || 'listing';
+}
+
+// Two rows can legitimately produce the same name+county slug (e.g. a
+// data-entry duplicate); appending a counter for repeats keeps every ID
+// unique so two different listings never collide onto one detail page.
+function assignArtistIds(artists) {
+  const seen = new Map();
+  artists.forEach((artist) => {
+    const base = deriveArtistId(artist);
+    const count = seen.get(base) || 0;
+    seen.set(base, count + 1);
+    artist.id = count === 0 ? base : `${base}-${count + 1}`;
+  });
 }
 
 // ---------- card rendering ----------
@@ -253,13 +295,7 @@ function cardTemplate(artist) {
   const days = artist.aosTourDays || 'Days not provided';
   const bio = bioExcerpt(artist.artistBio);
   const imageUrls = artist.imageUrls || [];
-
-  const registrationCategory = (artist.registrationCategory || '').trim().toLowerCase();
-  const isArtistGroup = registrationCategory === 'artist group';
-  const memberNames = isArtistGroup ? (artist.groupMemberNames || []) : [];
-  const showsMedium = registrationCategory === 'individual artist' || registrationCategory === 'artist group: individual artist';
-  const medium = showsMedium ? (artist.medium || '') : '';
-
+  const { memberNames, medium } = listingMeta(artist);
   const inPlan = isInPlan(artist.id);
 
   return `
@@ -272,7 +308,7 @@ function cardTemplate(artist) {
       <div class="card__body">
         <div class="card__tags">
           <span class="tag-solid">${escapeHtml(county)}</span>
-          ${medium ? `<span class="tag-outline">${escapeHtml(medium)}</span>` : ''}
+          ${medium ? `<span class="tag-accent">${escapeHtml(medium)}</span>` : ''}
         </div>
         <h3 class="card__name" data-open-detail="${artist.id}">${escapeHtml(name)}</h3>
         ${artist.veteranLabel ? `<span class="veteran-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
@@ -424,13 +460,35 @@ function dayStops(day) {
     .filter(Boolean);
 }
 
-function planStopRow(artist, index, prevArtist, day) {
+// Swaps a stop with its same-day neighbor in `state.plan`. Neighbors of the
+// other day may sit between them in the raw array (both days share one
+// list), so this walks past those rather than assuming adjacency.
+function moveStop(id, direction) {
+  const plan = state.plan;
+  const indexA = plan.findIndex((p) => p.id === id);
+  if (indexA === -1) return;
+  const day = plan[indexA].day;
+  let indexB = indexA + direction;
+  while (indexB >= 0 && indexB < plan.length && plan[indexB].day !== day) {
+    indexB += direction;
+  }
+  if (indexB < 0 || indexB >= plan.length) return;
+  [plan[indexA], plan[indexB]] = [plan[indexB], plan[indexA]];
+  savePlanToStorage();
+  render();
+}
+
+function planStopRow(artist, index, prevArtist, day, total) {
   const v = GROUP_VISUALS[artist.groupType] || GROUP_VISUALS.Artist;
   const otherDay = day === 'Saturday' ? 'Sunday' : 'Saturday';
   const note = distanceNote(prevArtist, artist);
   return `
     <div class="plan-stop">
-      <div class="plan-stop__num" style="background:${v.color}; color:${v.ink}; border-radius:${v.radius};">${index + 1}</div>
+      <div class="plan-stop__order">
+        <button type="button" class="reorder-btn" data-move-id="${artist.id}" data-move-dir="-1" aria-label="Move up" ${index === 0 ? 'disabled' : ''}>▲</button>
+        <div class="plan-stop__num" style="background:${v.color}; color:${v.ink}; border-radius:${v.radius};">${index + 1}</div>
+        <button type="button" class="reorder-btn" data-move-id="${artist.id}" data-move-dir="1" aria-label="Move down" ${index === total - 1 ? 'disabled' : ''}>▼</button>
+      </div>
       <div class="plan-stop__body">
         <div class="plan-stop__name" data-open-detail="${artist.id}">${escapeHtml(displayName(artist))}</div>
         <div class="plan-stop__meta">${escapeHtml(artist.groupType)} · ${escapeHtml(artist.county || '')} · ${escapeHtml(artist.aosTourDays || '')}</div>
@@ -455,9 +513,122 @@ function buildShareUrl(day, ids) {
 function itineraryText(day, stops) {
   const lines = [`My AOS Tour plan for ${day}:`, ''];
   stops.forEach((s, i) => {
-    lines.push(`${i + 1}. ${displayName(s)} — ${s.county || ''} County — ${s.aosTourDays || ''}`);
+    lines.push(`${i + 1}. ${displayName(s)} — ${s.county || ''} — ${s.aosTourDays || ''}`);
   });
   return lines.join('\n');
+}
+
+// Draws a branded snapshot of the day's itinerary onto a canvas, so it can
+// be shared as an actual image instead of plain text — messaging apps don't
+// generate rich previews for arbitrary links, so text-only sharing has no
+// visual at all.
+function renderItineraryCanvas(day, stops) {
+  const width = 800;
+  const headerHeight = 130;
+  const rowHeight = 88;
+  const footerHeight = 60;
+  const height = headerHeight + stops.length * rowHeight + footerHeight;
+  const scale = window.devicePixelRatio || 1;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  ctx.fillStyle = '#f7f7f7';
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.fillStyle = '#253551';
+  ctx.fillRect(0, 0, width, headerHeight);
+  ctx.fillStyle = '#fad62a';
+  ctx.font = '700 13px Helvetica, Arial, sans-serif';
+  ctx.fillText('ARTIST OPEN STUDIOS TOUR 2027', 32, 38);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = "700 32px 'Jost', Helvetica, Arial, sans-serif";
+  ctx.fillText(`My Day — ${day}`, 32, 78);
+  ctx.fillStyle = '#fad62a';
+  ctx.font = "400 15px 'Poppins', Helvetica, Arial, sans-serif";
+  ctx.fillText(`${stops.length} stop${stops.length === 1 ? '' : 's'} planned`, 32, 105);
+
+  let y = headerHeight;
+  stops.forEach((s, i) => {
+    const v = GROUP_VISUALS[s.groupType] || GROUP_VISUALS.Artist;
+
+    ctx.fillStyle = i % 2 === 0 ? '#ffffff' : '#f0f0f0';
+    ctx.fillRect(0, y, width, rowHeight);
+
+    ctx.fillStyle = v.color;
+    ctx.beginPath();
+    ctx.arc(64, y + rowHeight / 2, 21, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = v.ink;
+    ctx.font = "700 17px 'Jost', Helvetica, Arial, sans-serif";
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(i + 1), 64, y + rowHeight / 2 + 1);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+
+    ctx.fillStyle = '#253551';
+    ctx.font = "700 21px 'Jost', Helvetica, Arial, sans-serif";
+    ctx.fillText(displayName(s), 106, y + 38);
+
+    ctx.fillStyle = 'rgba(37, 53, 81, 0.75)';
+    ctx.font = "400 14px 'Poppins', Helvetica, Arial, sans-serif";
+    const meta = [s.groupType, s.county, s.aosTourDays].filter(Boolean).join('  ·  ');
+    ctx.fillText(meta, 106, y + 62);
+
+    y += rowHeight;
+  });
+
+  ctx.fillStyle = '#253551';
+  ctx.fillRect(0, y, width, footerHeight);
+  ctx.fillStyle = '#fad62a';
+  ctx.font = "600 14px 'Poppins', Helvetica, Arial, sans-serif";
+  ctx.textAlign = 'center';
+  ctx.fillText(`Plan your own day at ${location.host}`, width / 2, y + footerHeight / 2 + 5);
+  ctx.textAlign = 'left';
+
+  return canvas;
+}
+
+// Shares the itinerary as an actual image file via the native share sheet
+// when the platform supports sharing files (modern iOS/Android); otherwise
+// falls back to downloading the image so it can be attached manually.
+async function shareItineraryImage(day, stops, link) {
+  if (document.fonts && document.fonts.ready) {
+    try {
+      await document.fonts.ready;
+    } catch (err) {
+      // Font loading is best-effort — draw with fallback fonts if it fails.
+    }
+  }
+  const canvas = renderItineraryCanvas(day, stops);
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) return;
+  const file = new File([blob], `my-day-${day.toLowerCase()}.png`, { type: 'image/png' });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: `My AOS Tour plan — ${day}`,
+        text: `${itineraryText(day, stops)}\n${link}`,
+      });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.warn('Image share failed, falling back to download:', err);
+    }
+  }
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `my-day-${day.toLowerCase()}.png`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 function renderSharePanel(day, stops) {
@@ -482,6 +653,7 @@ function renderSharePanel(day, stops) {
       <button type="button" class="copy-btn ${state.copied ? 'copy-btn--done' : ''}" id="share-copy-btn">${state.copied ? 'Copied' : 'Copy'}</button>
     </div>
     <div class="share-panel__tiles">
+      <button type="button" class="share-tile" id="share-image">Share Image</button>
       <a class="share-tile" href="${smsHref}">Text</a>
       <button type="button" class="share-tile" id="share-email-toggle">Email</button>
       <button type="button" class="share-tile" id="share-print">Print</button>
@@ -494,10 +666,6 @@ function renderSharePanel(day, stops) {
           <input type="email" id="share-email-input" placeholder="you@example.com" value="${escapeHtml(state.email)}">
           <button type="button" class="email-send-btn ${state.emailSent ? 'email-send-btn--sent' : ''}" id="share-email-send">${state.emailSent ? 'Opened' : 'Send'}</button>
         </div>
-        <div class="share-panel__optin" id="share-optin">
-          <span class="checkbox ${state.optIn ? 'checkbox--checked' : ''}">${state.optIn ? '✓' : ''}</span>
-          <span>Also send me updates about future AOS Tours</span>
-        </div>
         ${state.emailSent ? '<div class="share-panel__sent-note">Your email app should have opened with the itinerary ready to send.</div>' : ''}
       </div>
     ` : ''}
@@ -507,6 +675,16 @@ function renderSharePanel(day, stops) {
   document.getElementById('share-close').addEventListener('click', () => {
     state.share = false;
     render();
+  });
+  document.getElementById('share-image').addEventListener('click', (e) => {
+    const btn = e.currentTarget;
+    const original = btn.textContent;
+    btn.textContent = 'Preparing…';
+    btn.disabled = true;
+    shareItineraryImage(day, stops, link).finally(() => {
+      btn.textContent = original;
+      btn.disabled = false;
+    });
   });
   document.getElementById('share-copy-btn').addEventListener('click', async () => {
     try {
@@ -535,10 +713,6 @@ function renderSharePanel(day, stops) {
     emailInput.addEventListener('input', (e) => {
       state.email = e.target.value;
       state.emailSent = false;
-    });
-    document.getElementById('share-optin').addEventListener('click', () => {
-      state.optIn = !state.optIn;
-      render();
     });
     document.getElementById('share-email-send').addEventListener('click', () => {
       const subject = encodeURIComponent(`My AOS Tour plan — ${day}`);
@@ -584,7 +758,7 @@ function renderPlanView() {
     el.planEmptyTitle.textContent = day === 'Saturday' ? 'Saturday is wide open' : 'Sunday is wide open';
   } else {
     el.planEmpty.hidden = true;
-    el.planStops.innerHTML = shareBanner + stops.map((s, i) => planStopRow(s, i, i > 0 ? stops[i - 1] : null, day)).join('');
+    el.planStops.innerHTML = shareBanner + stops.map((s, i) => planStopRow(s, i, i > 0 ? stops[i - 1] : null, day, stops.length)).join('');
   }
 
   if (state.incomingShare) {
@@ -646,11 +820,7 @@ function renderDetail() {
 
   const name = displayName(artist);
   const imageUrls = artist.imageUrls || [];
-  const registrationCategory = (artist.registrationCategory || '').trim().toLowerCase();
-  const isArtistGroup = registrationCategory === 'artist group';
-  const memberNames = isArtistGroup ? (artist.groupMemberNames || []) : [];
-  const showsMedium = registrationCategory === 'individual artist' || registrationCategory === 'artist group: individual artist';
-  const medium = showsMedium ? (artist.medium || '') : '';
+  const { memberNames, medium } = listingMeta(artist);
   const inPlan = isInPlan(artist.id);
 
   el.detailPhoto.innerHTML = `
@@ -666,7 +836,7 @@ function renderDetail() {
     <div class="card__tags">
       ${groupBadgeHtml(artist.groupType, { inline: true })}
       <span class="tag-solid">${escapeHtml(artist.county || '')}</span>
-      ${medium ? `<span class="tag-outline">${escapeHtml(medium)}</span>` : ''}
+      ${medium ? `<span class="tag-accent">${escapeHtml(medium)}</span>` : ''}
     </div>
     ${artist.veteranLabel ? `<span class="veteran-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
     <h2 class="detail-name">${escapeHtml(name)}</h2>
@@ -974,21 +1144,26 @@ function handleDelegatedClick(e) {
   }
   const addBtn = e.target.closest('[data-add-id]');
   if (addBtn) {
-    requestAdd(Number(addBtn.dataset.addId));
+    requestAdd(addBtn.dataset.addId);
     return;
   }
   const swapBtn = e.target.closest('[data-swap-id]');
   if (swapBtn) {
-    const id = Number(swapBtn.dataset.swapId);
+    const id = swapBtn.dataset.swapId;
     const day = swapBtn.dataset.swapTo;
     state.plan = state.plan.map((p) => (p.id === id ? { id, day } : p));
     savePlanToStorage();
     render();
     return;
   }
+  const moveBtn = e.target.closest('[data-move-id]');
+  if (moveBtn) {
+    moveStop(moveBtn.dataset.moveId, Number(moveBtn.dataset.moveDir));
+    return;
+  }
   const removeBtn = e.target.closest('[data-remove-id]');
   if (removeBtn) {
-    const id = Number(removeBtn.dataset.removeId);
+    const id = removeBtn.dataset.removeId;
     state.plan = state.plan.filter((p) => p.id !== id);
     savePlanToStorage();
     render();
@@ -1001,7 +1176,7 @@ function handleDelegatedClick(e) {
   }
   const openBtn = e.target.closest('[data-open-detail]');
   if (openBtn) {
-    openDetail(Number(openBtn.dataset.openDetail));
+    openDetail(openBtn.dataset.openDetail);
   }
 }
 
@@ -1031,7 +1206,7 @@ function readIncomingShare() {
   const day = params.get('shareDay');
   const stopsParam = params.get('stops');
   if (!day || !stopsParam) return null;
-  const ids = stopsParam.split(',').map(Number).filter(Number.isFinite);
+  const ids = stopsParam.split(',').filter(Boolean);
   if (!ids.length) return null;
   return { day: day === 'Sunday' ? 'Sunday' : 'Saturday', ids };
 }
@@ -1046,9 +1221,7 @@ async function init() {
 
   try {
     state.all = await loadArtists();
-    state.all.forEach((artist, i) => {
-      artist.id = i;
-    });
+    assignArtistIds(state.all);
 
     const incoming = readIncomingShare();
     if (incoming) {

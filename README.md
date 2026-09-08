@@ -9,7 +9,7 @@
    - `SHEET_GID` — the tab's `gid` from the URL when that tab is open (`0` for the first tab)
 4. Make sure the header row exactly matches the expected columns (Full Name, Registration Category, Sponsor Tier, County, Studio/Venue Name, Studio Address, Open to Hosting Another Artist?, Phone, SMS Opt-In, Tour Participation Count, Latitude, Longitude, Medium, Artist Bio, Image URL, AOS Tour Days, Website, Social Media, Accessibility Notes, Directions Notes, How did you hear about the AOS Tour?, Studio Group Artist Names).
 
-**Group Type (Artist / Artist Group / Gallery / Museum) is derived from Registration Category, not read from a "Directory Listing Type" column** — an earlier version of this app expected the sheet to already have a clean Directory Listing Type column, but real JotForm exports just mirror Registration Category into that column verbatim, which isn't reliable. `data.js`'s `REGISTRATION_CATEGORY_TO_TYPE` map now derives it directly:
+**Group Type (Artist / Artist Group / Gallery / Museum) is derived from Registration Category, not read from a "Directory Listing Type" column** — an earlier version of this app expected the sheet to already have a clean Directory Listing Type column, but real JotForm exports just mirror Registration Category into that column verbatim, which isn't reliable. `data.js`'s `REGISTRATION_CATEGORY_TO_GROUP_TYPE` map now derives it directly:
 
 | Registration Category (exact JotForm wording) | Group Type |
 |---|---|

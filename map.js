@@ -83,10 +83,6 @@ function clearMarkers() {
   mapState.markers = [];
 }
 
-function openEntryDetail(id) {
-  openDetail(Number(id));
-}
-
 function showGroupInfoWindow(marker, group) {
   if (!mapState.infoWindow) {
     mapState.infoWindow = new google.maps.InfoWindow();
@@ -107,7 +103,7 @@ function showGroupInfoWindow(marker, group) {
   google.maps.event.addListenerOnce(mapState.infoWindow, 'domready', () => {
     document.querySelectorAll('.map-info__item').forEach((btn) => {
       btn.addEventListener('click', () => {
-        openEntryDetail(btn.dataset.entryId);
+        openDetail(btn.dataset.entryId);
         mapState.infoWindow.close();
       });
     });
@@ -181,7 +177,7 @@ function renderMapMarkers(entries) {
 
     marker.addListener('click', () => {
       if (group.length === 1) {
-        openEntryDetail(group[0].id);
+        openDetail(group[0].id);
       } else {
         showGroupInfoWindow(marker, group);
       }
@@ -247,7 +243,7 @@ async function renderPlanMap(stops) {
       icon: groupMarkerIcon(stop.groupType),
       title: stop.fullName || stop.studioVenueName || '',
     });
-    marker.addListener('click', () => openEntryDetail(stop.id));
+    marker.addListener('click', () => openDetail(stop.id));
     planMapState.markers.push(marker);
     bounds.extend(position);
   });

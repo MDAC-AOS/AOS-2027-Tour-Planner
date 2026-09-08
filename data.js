@@ -1,12 +1,5 @@
 // Fetches and normalizes artist/venue data from the configured Google Sheet.
 
-const GROUP_TYPE_LABELS = {
-  Artist: 'Artist',
-  Studio: 'Artist Group',
-  Gallery: 'Gallery',
-  Museum: 'Museum',
-};
-
 // Visual identity per Group Type label: pin/badge color, icon ink, badge
 // shape (border-radius), and an SVG path for the icon glyph.
 const GROUP_VISUALS = {
@@ -28,15 +21,16 @@ const GROUP_VISUALS = {
   },
 };
 
-// Registration Category (as entered on the JotForm) -> Directory Listing
-// Type. The sheet's own Directory Listing Type column just mirrors
-// Registration Category verbatim and isn't reliable, so this is derived
-// instead. Anything not listed here (sponsor tiers like Friend/Bronze/
-// Silver/Gold/Platinum) is treated as "Not Listed" and excluded.
-const REGISTRATION_CATEGORY_TO_TYPE = {
+// Registration Category (as entered on the JotForm) -> the Group Type label
+// used throughout the app (matches the GROUP_VISUALS keys above). The
+// sheet's own Directory Listing Type column just mirrors Registration
+// Category verbatim and isn't reliable, so this is derived instead.
+// Anything not listed here (sponsor tiers like Friend/Bronze/Silver/Gold/
+// Platinum) is excluded from the directory.
+const REGISTRATION_CATEGORY_TO_GROUP_TYPE = {
   'individual artist': 'Artist',
   'artist group: individual artist': 'Artist',
-  'artist group': 'Studio',
+  'artist group': 'Artist Group',
   gallery: 'Gallery',
   'gallery-tier sponsor': 'Gallery',
   museum: 'Museum',
@@ -109,34 +103,34 @@ function tableToRecords(table) {
   });
 }
 
-function deriveDirectoryListingType(record) {
+function deriveGroupType(record) {
   const key = (record.registrationCategory || '').trim().toLowerCase();
-  return REGISTRATION_CATEGORY_TO_TYPE[key] || null;
+  return REGISTRATION_CATEGORY_TO_GROUP_TYPE[key] || null;
 }
 
 function isListable(record) {
-  return deriveDirectoryListingType(record) !== null;
+  return deriveGroupType(record) !== null;
 }
 
-function toGroupType(record) {
-  const type = deriveDirectoryListingType(record);
-  return type ? GROUP_TYPE_LABELS[type] : null;
+// Every comma-separated multi-value field (group member names, tour days,
+// image URLs, social links) comes from the same sheet-formula pattern
+// (SUBSTITUTE(..., CHAR(10), ", ")), so they all split the same way.
+function splitList(raw, limit) {
+  const items = String(raw || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return limit ? items.slice(0, limit) : items;
 }
 
 function parseGroupMemberNames(raw) {
-  return String(raw || '')
-    .split(',')
-    .map((name) => name.trim())
-    .filter(Boolean);
+  return splitList(raw);
 }
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function parseTourDays(raw) {
-  return String(raw || '')
-    .split(',')
-    .map((day) => day.trim())
-    .filter(Boolean);
+  return splitList(raw);
 }
 
 function isParticipatingToday(tourDays) {
@@ -145,18 +139,11 @@ function isParticipatingToday(tourDays) {
 }
 
 function parseImageUrls(raw) {
-  return String(raw || '')
-    .split(',')
-    .map((url) => url.trim())
-    .filter(Boolean)
-    .slice(0, 3);
+  return splitList(raw, 3);
 }
 
 function parseSocialLinks(raw) {
-  return String(raw || '')
-    .split(',')
-    .map((url) => url.trim())
-    .filter(Boolean);
+  return splitList(raw);
 }
 
 function ordinal(n) {
@@ -231,7 +218,7 @@ async function loadArtists() {
         ...record,
         fullName: toTitleCase(record.fullName),
         studioVenueName: toTitleCase(record.studioVenueName),
-        groupType: toGroupType(record),
+        groupType: deriveGroupType(record),
         groupMemberNames: parseGroupMemberNames(record.studioGroupArtistNames),
         tourDays,
         participatingToday: isParticipatingToday(tourDays),
