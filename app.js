@@ -52,6 +52,7 @@ const el = {
   planMapWrap: document.getElementById('plan-map-wrap'),
   backToTopDirectory: document.getElementById('back-to-top-directory'),
   backToTopPlan: document.getElementById('back-to-top-plan'),
+  backToTopDetail: document.getElementById('back-to-top-detail'),
   detailOverlay: document.getElementById('detail-overlay'),
   detailPhoto: document.getElementById('detail-photo'),
   detailBody: document.getElementById('detail-body'),
@@ -827,10 +828,13 @@ function wireResponsiveBreakpoint() {
 // Scrolling happens on `window` at narrow widths (single-column tab layout)
 // but inside `containerEl` itself at wide widths (independently scrolling
 // sidebar/list/rail columns) — both listeners are attached; only the one
-// that's the real scrolling ancestor at any given time ever fires.
-function wireBackToTop(containerEl, buttonEl, threshold = 400) {
+// that's the real scrolling ancestor at any given time ever fires. Pass
+// `alwaysContainer: true` for a container that scrolls itself at every
+// width (e.g. the detail overlay, a fixed full-viewport panel that never
+// hands scrolling off to `window`).
+function wireBackToTop(containerEl, buttonEl, threshold = 400, { alwaysContainer = false } = {}) {
   function currentScrollTop() {
-    return isWide() ? containerEl.scrollTop : window.scrollY;
+    return alwaysContainer || isWide() ? containerEl.scrollTop : window.scrollY;
   }
   function onScroll() {
     buttonEl.hidden = currentScrollTop() <= threshold;
@@ -838,7 +842,7 @@ function wireBackToTop(containerEl, buttonEl, threshold = 400) {
   window.addEventListener('scroll', onScroll);
   containerEl.addEventListener('scroll', onScroll);
   buttonEl.addEventListener('click', () => {
-    const target = isWide() ? containerEl : window;
+    const target = alwaysContainer || isWide() ? containerEl : window;
     target.scrollTo({ top: 0, behavior: 'instant' });
   });
 }
@@ -998,6 +1002,7 @@ async function init() {
     wireResponsiveBreakpoint();
     wireBackToTop(el.grid, el.backToTopDirectory);
     wireBackToTop(el.planView, el.backToTopPlan);
+    wireBackToTop(el.detailOverlay, el.backToTopDetail, 400, { alwaysContainer: true });
     el.grid.addEventListener('click', handleDelegatedClick);
     el.planStops.addEventListener('click', handleDelegatedClick);
     el.detailBody.addEventListener('click', handleDelegatedClick);
