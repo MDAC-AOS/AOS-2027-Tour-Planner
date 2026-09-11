@@ -12,7 +12,7 @@ const state = {
   // combine per breakpoint.
   view: 'list',
   railView: 'map',
-  filters: { groupType: 'all', county: 'all', medium: 'all' },
+  filters: { groupType: 'all', county: 'all', medium: 'all', search: '' },
   plan: [],
   planDay: 'Saturday',
   pending: null,
@@ -30,6 +30,8 @@ const el = {
   status: document.getElementById('status-message'),
   resultCount: document.getElementById('result-count'),
   resetFilters: document.getElementById('reset-filters'),
+  searchInput: document.getElementById('search-input'),
+  searchInputSide: document.getElementById('search-input-side'),
   chipsGroup: document.getElementById('chips-group'),
   chipsCounty: document.getElementById('chips-county'),
   chipsMedium: document.getElementById('chips-medium'),
@@ -336,12 +338,14 @@ function cardTemplate(artist) {
 // ---------- filters ----------
 
 function applyFilters() {
-  const { groupType, county, medium } = state.filters;
+  const { groupType, county, medium, search } = state.filters;
+  const searchTerm = search.trim().toLowerCase();
   return state.all.filter((artist) => {
     const matchesGroupType = groupType === 'all' || artist.groupType === groupType;
     const matchesCounty = county === 'all' || artist.county === county;
     const matchesMedium = medium === 'all' || artist.medium === medium;
-    return matchesGroupType && matchesCounty && matchesMedium;
+    const matchesSearch = !searchTerm || displayName(artist).toLowerCase().includes(searchTerm);
+    return matchesGroupType && matchesCounty && matchesMedium && matchesSearch;
   });
 }
 
@@ -985,9 +989,22 @@ function wireShareButton() {
   });
 }
 
+// Keeps the wide-layout sidebar search box and the narrow-layout chip-filters
+// search box showing the same value, without fighting whichever one the
+// visitor is actively typing into.
+function wireSearchInput(inputEl, otherInputEl) {
+  inputEl.addEventListener('input', () => {
+    state.filters.search = inputEl.value;
+    otherInputEl.value = inputEl.value;
+    render();
+  });
+}
+
 function wireResetFilters() {
   const reset = () => {
-    state.filters = { groupType: 'all', county: 'all', medium: 'all' };
+    state.filters = { groupType: 'all', county: 'all', medium: 'all', search: '' };
+    el.searchInput.value = '';
+    el.searchInputSide.value = '';
     renderChips();
     render();
   };
@@ -1287,6 +1304,8 @@ async function init() {
     wireDayTabs();
     wireShareButton();
     wireResetFilters();
+    wireSearchInput(el.searchInput, el.searchInputSide);
+    wireSearchInput(el.searchInputSide, el.searchInput);
     wirePicker();
     wireDetailBack();
     wireResponsiveBreakpoint();
