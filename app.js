@@ -1221,6 +1221,40 @@ function readIncomingShare() {
   return { day: day === 'Sunday' ? 'Sunday' : 'Saturday', ids };
 }
 
+// Sheet data is only fetched once, at load (see loadArtists() below). Left
+// open — a desktop tab, or an installed phone/tablet app — the page would
+// otherwise never notice edits made to the sheet mid-tour. This covers two
+// kinds of "left open" visitors: one who's actively looking at the screen
+// for a long stretch (the interval), and one who steps away and comes back
+// later (the visibility listener, e.g. reopening the installed app).
+const DATA_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+let lastArtistFetchAt = 0;
+
+async function refreshArtistData() {
+  if (!navigator.onLine) return;
+  try {
+    const fresh = await loadArtists();
+    assignArtistIds(fresh);
+    state.all = fresh;
+    lastArtistFetchAt = Date.now();
+    render();
+  } catch (err) {
+    console.error('Background data refresh failed', err);
+  }
+}
+
+function wireDataAutoRefresh() {
+  setInterval(() => {
+    if (document.visibilityState === 'visible') refreshArtistData();
+  }, DATA_REFRESH_INTERVAL_MS);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && Date.now() - lastArtistFetchAt > DATA_REFRESH_INTERVAL_MS) {
+      refreshArtistData();
+    }
+  });
+}
+
 async function init() {
   setStatus('Loading listings…');
   loadPlanFromStorage();
@@ -1232,6 +1266,8 @@ async function init() {
   try {
     state.all = await loadArtists();
     assignArtistIds(state.all);
+    lastArtistFetchAt = Date.now();
+    wireDataAutoRefresh();
 
     const incoming = readIncomingShare();
     if (incoming) {
