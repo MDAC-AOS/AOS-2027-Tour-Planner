@@ -135,6 +135,13 @@ function photoSlideHtml(url, name) {
   return `<img class="card__photo" src="${escapeHtml(url)}" alt="${escapeHtml(name)}" loading="lazy" onerror="this.outerHTML = placeholderPhotoHtml('${name.replace(/[\\']/g, '\\$&')}')">`;
 }
 
+// Artist Group / Gallery / Museum listings often upload a logo as their
+// only photo. A logo cropped to fill a photo-shaped frame loses its edges,
+// so these show the full image (letterboxed) instead of cropping to fill.
+function usesContainPhoto(groupType) {
+  return Boolean(groupType) && groupType !== 'Artist';
+}
+
 function photoMarkup(imageUrls, name) {
   if (imageUrls.length === 0) {
     return placeholderPhotoHtml(name);
@@ -298,9 +305,11 @@ function cardTemplate(artist) {
   const { memberNames, medium } = listingMeta(artist);
   const inPlan = isInPlan(artist.id);
 
+  const containClass = usesContainPhoto(artist.groupType) ? ' card__photo-wrap--contain' : '';
+
   return `
     <article class="card" data-entry-id="${artist.id}" data-open-detail="${artist.id}">
-      <div class="card__photo-wrap">
+      <div class="card__photo-wrap${containClass}">
         ${photoMarkup(imageUrls, name)}
         ${groupBadgeHtml(artist.groupType)}
         ${artist.participatingToday ? '<span class="badge badge--today">Participating Today</span>' : ''}
@@ -823,6 +832,7 @@ function renderDetail() {
   const { memberNames, medium } = listingMeta(artist);
   const inPlan = isInPlan(artist.id);
 
+  el.detailPhoto.classList.toggle('detail-overlay__photo--contain', usesContainPhoto(artist.groupType));
   el.detailPhoto.innerHTML = `
     ${photoMarkup(imageUrls.slice(0, 1), name)}
     <button type="button" class="detail-overlay__back" id="detail-back-inner" aria-label="Back">←</button>
@@ -1071,7 +1081,7 @@ function maybeShowInstallBanner() {
   if (!platform) return;
 
   if (platform === 'ios') {
-    el.installBannerText.textContent = 'Install this app: tap the Share icon (square with an arrow), then "Add to Home Screen."';
+    el.installBannerText.textContent = 'Install this app: tap your browser\'s Share icon (square with an arrow), then "Add to Home Screen."';
     el.installBannerAction.hidden = true;
   } else if (deferredInstallPrompt) {
     el.installBannerText.textContent = 'Add this app to your home screen for quick, one-tap access.';

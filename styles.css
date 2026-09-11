@@ -643,6 +643,17 @@ main {
   object-fit: cover;
 }
 
+/* Artist Group / Gallery / Museum cards: show the whole photo (usually a
+   logo) instead of cropping it to fill the frame. #fafafa matches the
+   Photo Gallery section's letterbox fill for a consistent look. */
+.card__photo-wrap--contain {
+  background: #fafafa;
+}
+
+.card__photo-wrap--contain .card__photo:not(.card__photo--branded) {
+  object-fit: contain;
+}
+
 .card__body {
   padding: 14px 16px 16px;
   display: flex;
@@ -1343,10 +1354,13 @@ main {
   background: #e8e8e8;
 }
 
-/* Anchor to the top of the source photo instead of the default center crop,
-   so faces/subjects near the top of a portrait-ish upload don't get cut off. */
-.detail-overlay__photo .card__photo {
-  object-position: top;
+/* Same treatment as .card__photo-wrap--contain, for the detail hero. */
+.detail-overlay__photo--contain {
+  background: #fafafa;
+}
+
+.detail-overlay__photo--contain .card__photo:not(.card__photo--branded) {
+  object-fit: contain;
 }
 
 .detail-overlay__back {
