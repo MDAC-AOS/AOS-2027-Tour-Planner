@@ -314,7 +314,6 @@ function cardTemplate(artist) {
       <div class="card__photo-wrap${containClass}">
         ${photoMarkup(imageUrls, name)}
         ${groupBadgeHtml(artist.groupType)}
-        ${artist.participatingToday ? '<span class="badge badge--today">Participating Today</span>' : ''}
       </div>
       <div class="card__body">
         <div class="card__tags">
@@ -322,7 +321,12 @@ function cardTemplate(artist) {
           ${medium ? `<span class="tag-accent">${escapeHtml(medium)}</span>` : ''}
         </div>
         <h3 class="card__name" data-open-detail="${artist.id}">${escapeHtml(name)}</h3>
-        ${artist.veteranLabel ? `<span class="veteran-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
+        ${artist.veteranLabel || artist.participatingToday ? `
+          <div class="card__status-row">
+            ${artist.veteranLabel ? `<span class="veteran-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
+            ${artist.participatingToday ? '<span class="badge badge--today">Participating Today</span>' : ''}
+          </div>
+        ` : ''}
         ${memberNames.length ? `<p class="card__members"><strong>Artists:</strong> ${escapeHtml(memberNames.join(', '))}</p>` : ''}
         ${bio ? `<p class="card__bio">${escapeHtml(bio)}</p>` : ''}
         <button type="button" class="read-more-link" data-open-detail="${artist.id}">Read More →</button>
