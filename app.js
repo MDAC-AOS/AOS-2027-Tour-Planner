@@ -1123,9 +1123,17 @@ function wireInstallPrompt() {
   el.installBannerAction.addEventListener('click', async () => {
     if (!deferredInstallPrompt) return;
     deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
+    const { outcome } = await deferredInstallPrompt.userChoice;
     deferredInstallPrompt = null;
-    dismissInstallBanner();
+    // Only remember "dismissed" permanently if they actually installed —
+    // declining the native prompt just hides the banner for now, so a
+    // future visit (with a fresh beforeinstallprompt event) can nudge
+    // them again instead of staying silent forever over one Cancel.
+    if (outcome === 'accepted') {
+      dismissInstallBanner();
+    } else {
+      el.installBanner.hidden = true;
+    }
   });
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
