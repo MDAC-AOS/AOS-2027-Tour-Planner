@@ -321,12 +321,7 @@ function cardTemplate(artist) {
           ${medium ? `<span class="tag-accent">${escapeHtml(medium)}</span>` : ''}
         </div>
         <h3 class="card__name" data-open-detail="${artist.id}">${escapeHtml(name)}</h3>
-        ${artist.veteranLabel || artist.participatingToday ? `
-          <div class="card__status-row">
-            ${artist.veteranLabel ? `<span class="veteran-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
-            ${artist.participatingToday ? '<span class="badge badge--today">Participating Today</span>' : ''}
-          </div>
-        ` : ''}
+        ${artist.veteranLabel ? `<span class="status-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
         ${memberNames.length ? `<p class="card__members"><strong>Artists:</strong> ${escapeHtml(memberNames.join(', '))}</p>` : ''}
         ${bio ? `<p class="card__bio">${escapeHtml(bio)}</p>` : ''}
         <button type="button" class="read-more-link" data-open-detail="${artist.id}">Read More →</button>
@@ -856,7 +851,7 @@ function renderDetail() {
       <span class="tag-solid">${escapeHtml(artist.county || '')}</span>
       ${medium ? `<span class="tag-accent">${escapeHtml(medium)}</span>` : ''}
     </div>
-    ${artist.veteranLabel ? `<span class="veteran-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
+    ${artist.veteranLabel ? `<span class="status-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
     <h2 class="detail-name">${escapeHtml(name)}</h2>
     ${artist.artistBio ? `<p class="detail-bio">${escapeHtml(artist.artistBio)}</p>` : ''}
     ${memberNames.length ? `<p class="card__members"><strong>Artists:</strong> ${escapeHtml(memberNames.join(', '))}</p>` : ''}
@@ -1067,11 +1062,15 @@ function wireDetailBack() {
 
 // ---------- install prompt banner ----------
 
-// PWAs don't install automatically, so this nudges mobile visitors toward
-// adding the app to their home screen — iOS has no install API at all
-// (Share sheet only), Android/Chrome exposes a real native prompt via
+// PWAs don't install automatically, so this nudges visitors toward
+// installing it — iOS has no install API at all (Share sheet only).
+// Android and desktop Chrome/Edge both expose a real native prompt via
 // `beforeinstallprompt` when install criteria are met, but that fires
-// async and isn't guaranteed, so a text fallback covers the gap.
+// async and isn't guaranteed on Android, so a text fallback covers the
+// gap there. Desktop only shows the banner once that event actually
+// fires — desktop Safari/Firefox never fire it, and UA-sniffing a
+// guess for them risks confidently wrong instructions (their install
+// paths vary too much to state as fact), so they simply see no banner.
 let deferredInstallPrompt = null;
 
 function isRunningStandalone() {
@@ -1088,6 +1087,9 @@ function detectInstallPlatform() {
   if (/Android/.test(ua)) return 'android';
   const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   if (isIOS) return 'ios';
+  // Desktop Chrome/Edge: only recognized once the browser itself confirms
+  // installability via this event — no UA guessing needed or wanted.
+  if (deferredInstallPrompt) return 'desktop';
   return null;
 }
 
@@ -1105,7 +1107,9 @@ function maybeShowInstallBanner() {
     el.installBannerText.textContent = 'Install this app: tap your browser\'s Share icon (square with an arrow), then "Add to Home Screen."';
     el.installBannerAction.hidden = true;
   } else if (deferredInstallPrompt) {
-    el.installBannerText.textContent = 'Add this app to your home screen for quick, one-tap access.';
+    el.installBannerText.textContent = platform === 'desktop'
+      ? 'Install this app for quick, one-click access from your desktop.'
+      : 'Add this app to your home screen for quick, one-tap access.';
     el.installBannerAction.hidden = false;
   } else {
     el.installBannerText.textContent = 'Install this app: tap the menu (⋮), then "Add to Home Screen" or "Install app."';

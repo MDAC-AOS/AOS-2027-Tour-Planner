@@ -127,17 +127,6 @@ function parseGroupMemberNames(raw) {
   return splitList(raw);
 }
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-function parseTourDays(raw) {
-  return splitList(raw);
-}
-
-function isParticipatingToday(tourDays) {
-  const today = DAY_NAMES[new Date().getDay()];
-  return tourDays.some((day) => day.toLowerCase() === today.toLowerCase());
-}
-
 function parseImageUrls(raw) {
   return splitList(raw, 3);
 }
@@ -213,15 +202,12 @@ async function loadArtists() {
   return records
     .filter(isListable)
     .map((record) => {
-      const tourDays = parseTourDays(record.aosTourDays);
       return {
         ...record,
         fullName: toTitleCase(record.fullName),
         studioVenueName: toTitleCase(record.studioVenueName),
         groupType: deriveGroupType(record),
         groupMemberNames: parseGroupMemberNames(record.studioGroupArtistNames),
-        tourDays,
-        participatingToday: isParticipatingToday(tourDays),
         imageUrls: parseImageUrls(record.imageUrl),
         socialLinks: parseSocialLinks(record.socialMedia),
         veteranLabel: deriveVeteranLabel(record.tourParticipationCount),
