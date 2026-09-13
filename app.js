@@ -818,7 +818,15 @@ function openDetail(id) {
 
 function closeDetail() {
   state.detailId = null;
+  clearArtistParamFromUrl();
   render();
+}
+
+function clearArtistParamFromUrl() {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has('artist')) return;
+  url.searchParams.delete('artist');
+  window.history.replaceState({}, '', url.toString());
 }
 
 function renderDetail() {
@@ -1244,6 +1252,12 @@ function wireGalleryScrollSync(root) {
   });
 }
 
+// Lets a registrant be sent a direct link straight to their own listing
+// (e.g. after they submit) — https://.../?artist=<their-id>.
+function readArtistIdFromUrl() {
+  return new URLSearchParams(window.location.search).get('artist');
+}
+
 function readIncomingShare() {
   const params = new URLSearchParams(window.location.search);
   const day = params.get('shareDay');
@@ -1301,6 +1315,11 @@ async function init() {
     assignArtistIds(state.all);
     lastArtistFetchAt = Date.now();
     wireDataAutoRefresh();
+
+    const artistId = readArtistIdFromUrl();
+    if (artistId && findArtist(artistId)) {
+      state.detailId = artistId;
+    }
 
     const incoming = readIncomingShare();
     if (incoming) {
