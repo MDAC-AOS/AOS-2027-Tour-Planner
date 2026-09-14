@@ -132,8 +132,14 @@ function placeholderPhotoHtml(name) {
 }
 window.placeholderPhotoHtml = placeholderPhotoHtml;
 
-function photoSlideHtml(url, name) {
-  return `<img class="card__photo" src="${escapeHtml(url)}" alt="${escapeHtml(name)}" loading="lazy" onerror="this.outerHTML = nameFallbackHtml('${name.replace(/[\\']/g, '\\$&')}')">`;
+// `deferred` holds the URL in data-src instead of src, so the browser never
+// requests it until loadGallerySlide() below promotes it — used for a
+// multi-photo card's 2nd/3rd slide, which would otherwise all load
+// together the moment the card scrolls into view (loading="lazy" doesn't
+// help here: they're already inside an on-screen scroll container).
+function photoSlideHtml(url, name, { deferred = false } = {}) {
+  const srcAttr = deferred ? `data-src="${escapeHtml(url)}"` : `src="${escapeHtml(url)}"`;
+  return `<img class="card__photo" ${srcAttr} alt="${escapeHtml(name)}" loading="lazy" onerror="this.outerHTML = nameFallbackHtml('${name.replace(/[\\']/g, '\\$&')}')">`;
 }
 
 // Artist Group / Gallery / Museum listings often upload a logo as their
@@ -150,7 +156,9 @@ function photoMarkup(imageUrls, name) {
   if (imageUrls.length === 1) {
     return photoSlideHtml(imageUrls[0], name);
   }
-  const slides = imageUrls.map((url) => `<div class="gallery__slide">${photoSlideHtml(url, name)}</div>`).join('');
+  const slides = imageUrls
+    .map((url, i) => `<div class="gallery__slide">${photoSlideHtml(url, name, { deferred: i > 0 })}</div>`)
+    .join('');
   const dots = imageUrls
     .map((_, i) => `<span class="gallery__dot${i === 0 ? ' gallery__dot--active' : ''}"></span>`)
     .join('');
@@ -1202,6 +1210,20 @@ function setActiveGalleryDot(gallery, index) {
   });
 }
 
+// Promotes a deferred slide's data-src to src, the moment it's actually
+// navigated to (see photoSlideHtml's `deferred` option above).
+function loadGallerySlide(gallery, index) {
+  const slide = gallery.querySelectorAll('.gallery__slide')[index];
+  const img = slide && slide.querySelector('img[data-src]');
+  if (!img) return;
+  slide.classList.add('gallery__slide--loading');
+  const clearSpinner = () => slide.classList.remove('gallery__slide--loading');
+  img.addEventListener('load', clearSpinner, { once: true });
+  img.addEventListener('error', clearSpinner, { once: true });
+  img.src = img.dataset.src;
+  img.removeAttribute('data-src');
+}
+
 // Distance between slide starts. Slides are equal-width, but on the detail
 // view's peek carousel that width is less than the track's own clientWidth,
 // so it can't be assumed to equal 100% of the track as it can for the
@@ -1222,6 +1244,7 @@ function handleDelegatedClick(e) {
     const currentIndex = step ? Math.round(track.scrollLeft / step) : 0;
     const direction = arrow.classList.contains('gallery__arrow--next') ? 1 : -1;
     const nextIndex = Math.min(Math.max(currentIndex + direction, 0), dotCount - 1);
+    loadGallerySlide(gallery, nextIndex);
     track.scrollLeft = nextIndex * step;
     setActiveGalleryDot(gallery, nextIndex);
     return;
@@ -1232,6 +1255,7 @@ function handleDelegatedClick(e) {
     const track = gallery.querySelector('.gallery__track');
     const step = gallerySlideStep(gallery);
     const index = [...gallery.querySelectorAll('.gallery__dot')].indexOf(dot);
+    loadGallerySlide(gallery, index);
     track.scrollLeft = index * step;
     setActiveGalleryDot(gallery, index);
     return;
@@ -1286,12 +1310,25 @@ function backToDirectory() {
 
 function wireGalleryScrollSync(root) {
   root.querySelectorAll('.gallery__track').forEach((track) => {
+    const gallery = track.closest('.gallery');
     track.addEventListener('scroll', () => {
-      const gallery = track.closest('.gallery');
       const step = gallerySlideStep(gallery);
       const index = step ? Math.round(track.scrollLeft / step) : 0;
       setActiveGalleryDot(gallery, index);
+      loadGallerySlide(gallery, index);
     });
+    // Give the browser a head start on whichever slide the visitor is
+    // swiping toward, rather than waiting for the swipe to fully settle.
+    track.addEventListener(
+      'touchstart',
+      () => {
+        const step = gallerySlideStep(gallery);
+        const current = step ? Math.round(track.scrollLeft / step) : 0;
+        loadGallerySlide(gallery, current - 1);
+        loadGallerySlide(gallery, current + 1);
+      },
+      { passive: true }
+    );
   });
 }
 
