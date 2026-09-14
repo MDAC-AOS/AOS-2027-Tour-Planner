@@ -418,13 +418,36 @@ function renderChips() {
 
 // ---------- list view ----------
 
-function renderList(filtered) {
+// Bumped whenever state.all is replaced with new data (fresh fetch or
+// cached fallback) — part of renderList's rebuild signature below.
+let artistDataVersion = 0;
+let lastRenderedGridSignature = null;
+
+// Rebuilding the grid recreates every card's <img> tags from scratch,
+// which abandons and restarts any photo still mid-download — on weak
+// signal, repeated interruptions like this (e.g. switching to Map and
+// back, which re-renders the grid even though it's just being hidden)
+// can leave a photo's request perpetually restarted and never actually
+// completing. Skipping the rebuild when nothing that affects the grid's
+// content has actually changed avoids disturbing in-flight loads.
+function renderList(filtered, { force = false } = {}) {
   el.resultCount.textContent = `${filtered.length} listing${filtered.length === 1 ? '' : 's'}`;
 
   if (filtered.length === 0) {
     el.grid.innerHTML = '<p class="status-message">No stops match those filters. Try widening your search.</p>';
+    lastRenderedGridSignature = null;
     return;
   }
+
+  const signature = [
+    artistDataVersion,
+    filtered.map((a) => a.id).join(','),
+    state.plan.map((p) => p.id).sort().join(','),
+  ].join('|');
+  if (!force && signature === lastRenderedGridSignature) {
+    return;
+  }
+  lastRenderedGridSignature = signature;
 
   el.grid.innerHTML = filtered.map(cardTemplate).join('');
   wireGalleryScrollSync(el.grid);
@@ -978,7 +1001,7 @@ function isWide() {
   return window.matchMedia(WIDE_QUERY).matches;
 }
 
-function render() {
+function render({ forceGridRebuild = false } = {}) {
   const filtered = applyFilters();
   const wide = isWide();
 
@@ -992,7 +1015,7 @@ function render() {
   const showingMap = wide ? state.railView === 'map' : state.view === 'map';
   const showingPlan = wide ? state.railView === 'plan' : state.view === 'plan';
 
-  renderList(filtered);
+  renderList(filtered, { force: forceGridRebuild });
   el.grid.hidden = wide ? false : state.view !== 'list';
   document.getElementById('chip-filters').hidden = !wide && state.view === 'plan';
   el.mapView.hidden = !showingMap;
@@ -1388,6 +1411,7 @@ async function refreshArtistData() {
     const fresh = await loadArtists();
     assignArtistIds(fresh);
     state.all = fresh;
+    artistDataVersion++;
     cacheArtists(fresh);
     lastArtistFetchAt = Date.now();
     render();
@@ -1417,8 +1441,9 @@ async function init() {
     // Photos that failed to load (falling back to the name tile) and the
     // map never retry on their own — regenerating the current view gives
     // them a fresh attempt now that signal is back, instead of requiring
-    // a full reload.
-    render();
+    // a full reload. Forced because nothing else about the list changed,
+    // which would otherwise make renderList skip the rebuild.
+    render({ forceGridRebuild: true });
   });
   window.addEventListener('offline', renderConnection);
   wireInstallPrompt();
