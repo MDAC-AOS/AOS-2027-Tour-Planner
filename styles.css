@@ -1367,10 +1367,10 @@ main {
   object-fit: contain;
 }
 
-.detail-overlay__back {
+.detail-overlay__back,
+.detail-overlay__share {
   position: absolute;
   top: 16px;
-  left: 16px;
   z-index: 3;
   width: 40px;
   height: 40px;
@@ -1385,6 +1385,14 @@ main {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(37, 53, 81, 0.25);
+}
+
+.detail-overlay__back {
+  left: 16px;
+}
+
+.detail-overlay__share {
+  right: 16px;
 }
 
 .detail-overlay__body {

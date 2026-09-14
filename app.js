@@ -829,6 +829,36 @@ function clearArtistParamFromUrl() {
   window.history.replaceState({}, '', url.toString());
 }
 
+function detailShareUrl(id) {
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.searchParams.set('artist', id);
+  return url.toString();
+}
+
+async function shareDetailLink(artist, button) {
+  const url = detailShareUrl(artist.id);
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: displayName(artist), url });
+    } catch (err) {
+      // Cancelled — nothing to do.
+    }
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch (err) {
+    window.prompt('Copy this link:', url);
+    return;
+  }
+  const original = button.innerHTML;
+  button.innerHTML = '✓';
+  setTimeout(() => {
+    button.innerHTML = original;
+  }, 1500);
+}
+
 function renderDetail() {
   const artist = state.detailId !== null ? findArtist(state.detailId) : null;
   el.detailOverlay.hidden = !artist;
@@ -847,8 +877,17 @@ function renderDetail() {
   el.detailPhoto.innerHTML = `
     ${photoMarkup(imageUrls.slice(0, 1), name)}
     <button type="button" class="detail-overlay__back" id="detail-back-inner" aria-label="Back">←</button>
+    <button type="button" class="detail-overlay__share" id="detail-share-btn" title="Share this listing" aria-label="Share this listing">
+      <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
+        <circle cx="15" cy="4.5" r="2.6" fill="#253551"></circle>
+        <circle cx="15" cy="15.5" r="2.6" fill="#253551"></circle>
+        <circle cx="5" cy="10" r="2.6" fill="#253551"></circle>
+        <path d="M7.3 8.8 L12.7 5.7 M7.3 11.2 L12.7 14.3" stroke="#253551" stroke-width="1.6" stroke-linecap="round"></path>
+      </svg>
+    </button>
   `;
   document.getElementById('detail-back-inner').addEventListener('click', closeDetail);
+  document.getElementById('detail-share-btn').addEventListener('click', (e) => shareDetailLink(artist, e.currentTarget));
 
   const socialLinks = artist.socialLinks || [];
 
