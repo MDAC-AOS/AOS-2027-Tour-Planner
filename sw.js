@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aos-tour-shell-v1';
+const CACHE_NAME = 'aos-tour-shell-v3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const APP_SHELL = [
   './manifest.json',
   './icons/icon.svg',
   './icons/favicon.svg',
+  './assets/photo-placeholder.jpg',
 ];
 
 self.addEventListener('install', (event) => {

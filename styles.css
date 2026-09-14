@@ -636,10 +636,21 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-heading);
-  font-size: 2rem;
-  color: #ffffff;
+  padding: 20px;
+  text-align: center;
   background: var(--color-twilight-indigo);
+}
+
+.card__photo-placeholder-name {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.1rem;
+  line-height: 1.35;
+  color: #ffffff;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
 }
 
 .card__photo--branded {

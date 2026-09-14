@@ -112,31 +112,28 @@ function bioExcerpt(bio, maxLength = 140) {
   return `${truncated.slice(0, lastSpace > 0 ? lastSpace : maxLength)}…`;
 }
 
-function initials(name) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0].toUpperCase())
-    .join('') || '?';
+// Shown when a listing's own photo fails to load (most often: offline —
+// see sw.js, real photo URLs are never cached). Deliberately not the
+// branded placeholder image below: if many listings' photos fail at once
+// (e.g. a visitor loses signal), showing the same stock image repeated
+// across dozens of different cards reads as broken, where the actual name
+// still reads as useful, intentional content.
+function nameFallbackHtml(name) {
+  return `<div class="card__photo card__photo--placeholder"><span class="card__photo-placeholder-name">${escapeHtml(name)}</span></div>`;
 }
+window.nameFallbackHtml = nameFallbackHtml;
 
-function initialsFallbackHtml(name) {
-  return `<div class="card__photo card__photo--placeholder">${escapeHtml(initials(name))}</div>`;
-}
-window.initialsFallbackHtml = initialsFallbackHtml;
-
-// Branded stand-in image, used when a listing has no photo of its own and
-// as the fallback if a real photo URL fails to load. Falls back to the
-// initials tile if the brand image itself is missing/fails.
+// Branded stand-in image, used only when a listing has no photo of its own
+// to begin with (not when a real photo fails to load — see above). Falls
+// back to the name tile too if the brand image itself is missing/fails.
 function placeholderPhotoHtml(name) {
   const safeName = name.replace(/[\\']/g, '\\$&');
-  return `<img class="card__photo card__photo--branded" src="assets/photo-placeholder.png" alt="${escapeHtml(name)}" loading="lazy" onerror="this.outerHTML = initialsFallbackHtml('${safeName}')">`;
+  return `<img class="card__photo card__photo--branded" src="assets/photo-placeholder.jpg" alt="${escapeHtml(name)}" loading="lazy" onerror="this.outerHTML = nameFallbackHtml('${safeName}')">`;
 }
 window.placeholderPhotoHtml = placeholderPhotoHtml;
 
 function photoSlideHtml(url, name) {
-  return `<img class="card__photo" src="${escapeHtml(url)}" alt="${escapeHtml(name)}" loading="lazy" onerror="this.outerHTML = placeholderPhotoHtml('${name.replace(/[\\']/g, '\\$&')}')">`;
+  return `<img class="card__photo" src="${escapeHtml(url)}" alt="${escapeHtml(name)}" loading="lazy" onerror="this.outerHTML = nameFallbackHtml('${name.replace(/[\\']/g, '\\$&')}')">`;
 }
 
 // Artist Group / Gallery / Museum listings often upload a logo as their
