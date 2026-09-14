@@ -1375,7 +1375,14 @@ async function init() {
   setStatus('Loading listings…');
   loadPlanFromStorage();
   renderConnection();
-  window.addEventListener('online', renderConnection);
+  window.addEventListener('online', () => {
+    renderConnection();
+    // Photos that failed to load (falling back to the name tile) and the
+    // map never retry on their own — regenerating the current view gives
+    // them a fresh attempt now that signal is back, instead of requiring
+    // a full reload.
+    render();
+  });
   window.addEventListener('offline', renderConnection);
   wireInstallPrompt();
 

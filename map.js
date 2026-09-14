@@ -13,7 +13,7 @@ function loadGoogleMaps() {
   if (mapState.loaded) return Promise.resolve();
   if (mapState.loading) return mapState.loading;
 
-  mapState.loading = new Promise((resolve, reject) => {
+  const promise = new Promise((resolve, reject) => {
     if (!CONFIG.GOOGLE_MAPS_API_KEY || CONFIG.GOOGLE_MAPS_API_KEY === 'REPLACE_WITH_YOUR_GOOGLE_MAPS_API_KEY') {
       reject(new Error('No Google Maps API key configured. Set GOOGLE_MAPS_API_KEY in config.js.'));
       return;
@@ -29,7 +29,15 @@ function loadGoogleMaps() {
     document.head.appendChild(script);
   });
 
-  return mapState.loading;
+  // Reset so a later call (e.g. once signal comes back) retries instead of
+  // reusing this same rejected promise forever. Chained after assignment
+  // below so it can't be clobbered by it.
+  promise.catch(() => {
+    mapState.loading = null;
+  });
+
+  mapState.loading = promise;
+  return promise;
 }
 
 // Union-find: two entries count as "the same location" if they share exact
