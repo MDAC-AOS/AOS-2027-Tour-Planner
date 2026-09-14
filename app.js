@@ -76,6 +76,8 @@ const el = {
   connPill: document.getElementById('conn-pill'),
   connDot: document.getElementById('conn-dot'),
   connLabel: document.getElementById('conn-label'),
+  mapOfflineNote: document.getElementById('map-offline-note'),
+  planMapOfflineNote: document.getElementById('plan-map-offline-note'),
 };
 
 // ---------- persistence ----------
@@ -952,6 +954,11 @@ function renderConnection() {
   el.connLabel.textContent = online ? 'Online' : 'Offline · cached';
   el.connPill.classList.toggle('conn-pill--offline', !online);
   el.connDot.classList.toggle('conn-pill__dot--offline', !online);
+  // Maps need a live connection — there's no offline fallback for these,
+  // unlike the directory data — so flag that upfront rather than letting
+  // the map area just look broken.
+  el.mapOfflineNote.hidden = online;
+  el.planMapOfflineNote.hidden = online;
 }
 
 // ---------- top-level render ----------
@@ -1307,6 +1314,31 @@ function readIncomingShare() {
   return { day: day === 'Sunday' ? 'Sunday' : 'Saturday', ids };
 }
 
+const ARTISTS_CACHE_KEY = 'aosLastArtistsCacheV1';
+
+// A visitor reopening the app (or reloading) with no signal would otherwise
+// see nothing — the directory data is deliberately never cached by the
+// service worker (see sw.js) so listings stay fresh. This saves the last
+// successful fetch as a fallback so an offline reopen still shows the tour,
+// just possibly a bit stale, instead of an empty, half-broken page.
+function cacheArtists(artists) {
+  try {
+    localStorage.setItem(ARTISTS_CACHE_KEY, JSON.stringify(artists));
+  } catch (err) {
+    // Storage full or unavailable — the cache is a nice-to-have, not
+    // required, so just skip it.
+  }
+}
+
+function loadCachedArtists() {
+  try {
+    const raw = localStorage.getItem(ARTISTS_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null;
+  }
+}
+
 // Sheet data is only fetched once, at load (see loadArtists() below). Left
 // open — a desktop tab, or an installed phone/tablet app — the page would
 // otherwise never notice edits made to the sheet mid-tour. This covers two
@@ -1322,6 +1354,7 @@ async function refreshArtistData() {
     const fresh = await loadArtists();
     assignArtistIds(fresh);
     state.all = fresh;
+    cacheArtists(fresh);
     lastArtistFetchAt = Date.now();
     render();
   } catch (err) {
@@ -1349,52 +1382,61 @@ async function init() {
   window.addEventListener('offline', renderConnection);
   wireInstallPrompt();
 
+  let usingCachedArtists = false;
   try {
     state.all = await loadArtists();
     assignArtistIds(state.all);
-    lastArtistFetchAt = Date.now();
-    wireDataAutoRefresh();
-
-    const artistId = readArtistIdFromUrl();
-    if (artistId && findArtist(artistId)) {
-      state.detailId = artistId;
-    }
-
-    const incoming = readIncomingShare();
-    if (incoming) {
-      state.incomingShare = incoming;
-      state.view = 'plan';
-      state.planDay = incoming.day;
-      el.tabs.forEach((b) => {
-        b.classList.toggle('tabs__btn--active', b.dataset.view === 'plan');
-        b.setAttribute('aria-selected', b.dataset.view === 'plan' ? 'true' : 'false');
-      });
-    }
-
-    renderChips();
-    renderMapLegend();
-    wireTabs();
-    wireRailTabs();
-    wireDayTabs();
-    wireShareButton();
-    wireResetFilters();
-    wireSearchInput(el.searchInput, el.searchInputSide);
-    wireSearchInput(el.searchInputSide, el.searchInput);
-    wirePicker();
-    wireDetailBack();
-    wireResponsiveBreakpoint();
-    wireBackToTop(el.grid, el.backToTopDirectory);
-    wireBackToTop(el.planView, el.backToTopPlan);
-    wireBackToTop(el.detailOverlay, el.backToTopDetail, 400, { alwaysContainer: true });
-    el.grid.addEventListener('click', handleDelegatedClick);
-    el.planStops.addEventListener('click', handleDelegatedClick);
-    el.detailBody.addEventListener('click', handleDelegatedClick);
-    setStatus('');
-    render();
+    cacheArtists(state.all);
   } catch (err) {
     console.error(err);
-    setStatus(err.message || 'Something went wrong loading the tour listings.', true);
+    const cached = loadCachedArtists();
+    if (!cached || !cached.length) {
+      setStatus("Can't load the tour listings right now — no internet connection. Try again once you have signal.", true);
+      return;
+    }
+    state.all = cached;
+    usingCachedArtists = true;
   }
+
+  lastArtistFetchAt = Date.now();
+  wireDataAutoRefresh();
+
+  const artistId = readArtistIdFromUrl();
+  if (artistId && findArtist(artistId)) {
+    state.detailId = artistId;
+  }
+
+  const incoming = readIncomingShare();
+  if (incoming) {
+    state.incomingShare = incoming;
+    state.view = 'plan';
+    state.planDay = incoming.day;
+    el.tabs.forEach((b) => {
+      b.classList.toggle('tabs__btn--active', b.dataset.view === 'plan');
+      b.setAttribute('aria-selected', b.dataset.view === 'plan' ? 'true' : 'false');
+    });
+  }
+
+  renderChips();
+  renderMapLegend();
+  wireTabs();
+  wireRailTabs();
+  wireDayTabs();
+  wireShareButton();
+  wireResetFilters();
+  wireSearchInput(el.searchInput, el.searchInputSide);
+  wireSearchInput(el.searchInputSide, el.searchInput);
+  wirePicker();
+  wireDetailBack();
+  wireResponsiveBreakpoint();
+  wireBackToTop(el.grid, el.backToTopDirectory);
+  wireBackToTop(el.planView, el.backToTopPlan);
+  wireBackToTop(el.detailOverlay, el.backToTopDetail, 400, { alwaysContainer: true });
+  el.grid.addEventListener('click', handleDelegatedClick);
+  el.planStops.addEventListener('click', handleDelegatedClick);
+  el.detailBody.addEventListener('click', handleDelegatedClick);
+  setStatus(usingCachedArtists ? "You're offline — showing your last saved listings." : '');
+  render();
 }
 
 init();

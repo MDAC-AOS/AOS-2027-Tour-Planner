@@ -1122,6 +1122,16 @@ main {
   color: rgba(37, 53, 81, 0.75);
 }
 
+.map-offline-note {
+  border: 2px dashed rgba(37, 53, 81, 0.28);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: rgba(37, 53, 81, 0.75);
+}
+
 .plan-map-wrap {
   border-radius: 14px;
   overflow: hidden;

@@ -25,7 +25,7 @@ function loadGoogleMaps() {
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(CONFIG.GOOGLE_MAPS_API_KEY)}&callback=__onGoogleMapsLoaded`;
     script.async = true;
-    script.onerror = () => reject(new Error('Failed to load Google Maps. Check the API key and network connection.'));
+    script.onerror = () => reject(new Error("Map isn't available right now — check your internet connection."));
     document.head.appendChild(script);
   });
 
