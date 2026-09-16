@@ -12,12 +12,13 @@ const state = {
   // combine per breakpoint.
   view: 'list',
   railView: 'map',
-  // county/medium support picking more than one value at once; groupType
-  // stays single-select (only 4 possible values, no need for the extra
-  // complexity). 'all'/empty array both mean "no filter applied."
-  filters: { groupType: 'all', county: [], medium: [], search: '' },
-  countyPanelOpen: false,
-  mediumPanelOpen: false,
+  // All three support picking more than one value at once; an empty array
+  // means "no filter applied" (same as the old 'all' sentinel).
+  filters: { groupType: [], county: [], medium: [], search: '' },
+  // Which mobile filter dropdown (if any) is currently open — 'county',
+  // 'medium', or null. A single value instead of two independent booleans
+  // so opening one always closes the other; see filterMultiSelect() below.
+  openFilterPanel: null,
   plan: [],
   planDay: 'Saturday',
   pending: null,
@@ -354,7 +355,7 @@ function applyFilters() {
   const { groupType, county, medium, search } = state.filters;
   const searchTerm = search.trim().toLowerCase();
   return state.all.filter((artist) => {
-    const matchesGroupType = groupType === 'all' || artist.groupType === groupType;
+    const matchesGroupType = groupType.length === 0 || groupType.includes(artist.groupType);
     const matchesCounty = county.length === 0 || county.includes(artist.county);
     const matchesMedium = medium.length === 0 || medium.includes(artist.medium);
     const matchesSearch = !searchTerm || displayName(artist).toLowerCase().includes(searchTerm);
@@ -362,41 +363,32 @@ function applyFilters() {
   });
 }
 
-function chipRow(container, options, activeValue, onPick) {
+// Narrow layout multi-select: horizontally-scrolling chip row, more than one
+// active at once. Used only for Group Type (just 4 options) — County/Medium
+// use filterMultiSelect's checkbox dropdown instead since they run 20+ deep.
+function chipRowMulti(container, options, activeValues, onToggle) {
   container.innerHTML = options
     .map((opt) => {
-      const active = opt.value === activeValue;
+      const active = opt.value === 'all' ? activeValues.length === 0 : activeValues.includes(opt.value);
       return `<button type="button" class="chip ${active ? 'chip--active' : ''}" data-value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</button>`;
     })
     .join('');
   container.querySelectorAll('.chip').forEach((btn) => {
-    btn.addEventListener('click', () => onPick(btn.dataset.value));
+    btn.addEventListener('click', () => onToggle(btn.dataset.value));
   });
 }
 
-function chipCol(container, options, activeValue, onPick, { withDots = false } = {}) {
+// Sidebar (wide layout) multi-select: more than one chip can be active at
+// once. The "all" option acts as a clear button rather than a selectable
+// state. `withDots` shows each option's Group Type color/shape swatch.
+function chipColMulti(container, options, activeValues, onToggle, { withDots = false } = {}) {
   container.innerHTML = options
     .map((opt) => {
-      const active = opt.value === activeValue;
+      const active = opt.value === 'all' ? activeValues.length === 0 : activeValues.includes(opt.value);
       const dot = withDots
         ? `<span class="chip-side__dot" style="background:${opt.value === 'all' ? 'rgba(37,53,81,0.25)' : (GROUP_VISUALS[opt.value] || {}).color || '#ccc'}; border-radius:${opt.value === 'all' ? '3px' : (GROUP_VISUALS[opt.value] || {}).radius || '3px'};"></span>`
         : '';
       return `<button type="button" class="chip-side ${active ? 'chip-side--active' : ''}" data-value="${escapeHtml(opt.value)}">${dot}<span>${escapeHtml(opt.label)}</span></button>`;
-    })
-    .join('');
-  container.querySelectorAll('.chip-side').forEach((btn) => {
-    btn.addEventListener('click', () => onPick(btn.dataset.value));
-  });
-}
-
-// Sidebar (wide layout) multi-select: same chip look as chipCol, but more
-// than one can be active at once. The "all" option acts as a clear button
-// rather than a selectable state.
-function chipColMulti(container, options, activeValues, onToggle) {
-  container.innerHTML = options
-    .map((opt) => {
-      const active = opt.value === 'all' ? activeValues.length === 0 : activeValues.includes(opt.value);
-      return `<button type="button" class="chip-side ${active ? 'chip-side--active' : ''}" data-value="${escapeHtml(opt.value)}"><span>${escapeHtml(opt.label)}</span></button>`;
     })
     .join('');
   container.querySelectorAll('.chip-side').forEach((btn) => {
@@ -410,11 +402,11 @@ function chipColMulti(container, options, activeValues, onToggle) {
 // checked — a native <select multiple> would work too, but renders as an
 // unfamiliar, cramped list on iOS rather than a clean dropdown.
 //
-// getOpen/setOpen persist the panel's open state across renderChips()
-// rebuilds (every checkbox change re-renders the whole app to keep the
-// sidebar and this in sync) — without it, checking one box would close the
-// panel, defeating the point of a *multi*-select.
-function filterMultiSelect(container, options, activeValues, onToggle, getOpen, setOpen) {
+// `isOpen` reflects state.openFilterPanel at render time. `setOpen` writes
+// back to that same shared value and re-renders — since only one panel can
+// ever be the open one, opening this one always closes the other, and a
+// checkbox change (which calls onToggle, not setOpen) leaves it untouched.
+function filterMultiSelect(container, options, activeValues, onToggle, isOpen, setOpen) {
   const allLabel = options.find((opt) => opt.value === 'all').label;
   const realOptions = options.filter((opt) => opt.value !== 'all');
   const summary =
@@ -422,7 +414,7 @@ function filterMultiSelect(container, options, activeValues, onToggle, getOpen, 
 
   container.innerHTML = `
     <button type="button" class="filter-multiselect__btn">${escapeHtml(summary)}</button>
-    <div class="filter-multiselect__panel" ${getOpen() ? '' : 'hidden'}>
+    <div class="filter-multiselect__panel" ${isOpen ? '' : 'hidden'}>
       ${activeValues.length > 0 ? '<button type="button" class="filter-multiselect__clear">Clear</button>' : ''}
       ${realOptions
         .map(
@@ -438,9 +430,7 @@ function filterMultiSelect(container, options, activeValues, onToggle, getOpen, 
 
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
-    const willOpen = panel.hidden;
-    setOpen(willOpen);
-    panel.hidden = !willOpen;
+    setOpen(!isOpen);
   });
 
   panel.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
@@ -451,13 +441,16 @@ function filterMultiSelect(container, options, activeValues, onToggle, getOpen, 
   if (clearBtn) clearBtn.addEventListener('click', () => onToggle('all'));
 }
 
-// Closes any open filter-multiselect panel on an outside click/tap.
+// Closes the open filter-multiselect panel (if any) on a click/tap outside
+// it. A click inside the OTHER (closed) filter-multiselect also counts as
+// "outside" here — that's what lets tapping County's button close an
+// already-open Medium panel, matching the mutual-exclusion in setOpen above.
 function wireFilterMultiSelectClose() {
   document.addEventListener('click', (e) => {
-    if (e.target.closest('.filter-multiselect')) return;
-    if (!state.countyPanelOpen && !state.mediumPanelOpen) return;
-    state.countyPanelOpen = false;
-    state.mediumPanelOpen = false;
+    if (!state.openFilterPanel) return;
+    const openContainer = state.openFilterPanel === 'county' ? el.chipsCounty : el.chipsMedium;
+    if (e.target.closest('.filter-multiselect') === openContainer) return;
+    state.openFilterPanel = null;
     renderChips();
   });
 }
@@ -471,8 +464,15 @@ function renderChips() {
   const countyOptions = [{ value: 'all', label: 'All counties' }, ...counties.map((c) => ({ value: c, label: c }))];
   const mediumOptions = [{ value: 'all', label: 'All media' }, ...mediums.map((m) => ({ value: m, label: m }))];
 
-  const pickGroup = (value) => {
-    state.filters.groupType = value;
+  const toggleGroupType = (value) => {
+    if (value === 'all') {
+      state.filters.groupType = [];
+    } else {
+      const set = new Set(state.filters.groupType);
+      if (set.has(value)) set.delete(value);
+      else set.add(value);
+      state.filters.groupType = [...set];
+    }
     renderChips();
     render();
   };
@@ -501,15 +501,16 @@ function renderChips() {
     render();
   };
 
-  chipRow(el.chipsGroup, groupOptions, state.filters.groupType, pickGroup);
+  chipRowMulti(el.chipsGroup, groupOptions, state.filters.groupType, toggleGroupType);
   filterMultiSelect(
     el.chipsCounty,
     countyOptions,
     state.filters.county,
     toggleCounty,
-    () => state.countyPanelOpen,
+    state.openFilterPanel === 'county',
     (open) => {
-      state.countyPanelOpen = open;
+      state.openFilterPanel = open ? 'county' : null;
+      renderChips();
     }
   );
   filterMultiSelect(
@@ -517,13 +518,14 @@ function renderChips() {
     mediumOptions,
     state.filters.medium,
     toggleMedium,
-    () => state.mediumPanelOpen,
+    state.openFilterPanel === 'medium',
     (open) => {
-      state.mediumPanelOpen = open;
+      state.openFilterPanel = open ? 'medium' : null;
+      renderChips();
     }
   );
 
-  chipCol(el.chipsGroupSide, groupOptions, state.filters.groupType, pickGroup, { withDots: true });
+  chipColMulti(el.chipsGroupSide, groupOptions, state.filters.groupType, toggleGroupType, { withDots: true });
   chipColMulti(el.chipsCountySide, countyOptions, state.filters.county, toggleCounty);
   chipColMulti(el.chipsMediumSide, mediumOptions, state.filters.medium, toggleMedium);
 }
@@ -1196,9 +1198,8 @@ function wireSearchInput(inputEl, otherInputEl) {
 
 function wireResetFilters() {
   const reset = () => {
-    state.filters = { groupType: 'all', county: [], medium: [], search: '' };
-    state.countyPanelOpen = false;
-    state.mediumPanelOpen = false;
+    state.filters = { groupType: [], county: [], medium: [], search: '' };
+    state.openFilterPanel = null;
     el.searchInput.value = '';
     el.searchInputSide.value = '';
     renderChips();

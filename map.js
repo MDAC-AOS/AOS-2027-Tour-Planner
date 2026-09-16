@@ -235,7 +235,7 @@ async function renderPlanMap(stops) {
 
   if (!planMapState.map) {
     planMapState.map = new google.maps.Map(document.getElementById('plan-map'), {
-      center: { lat: 38.4, lng: -122.7 },
+      center: { lat: 39.0, lng: -76.8 },
       zoom: 9,
     });
   }
@@ -274,7 +274,7 @@ async function showMapView(entries) {
 
   if (!mapState.map) {
     mapState.map = new google.maps.Map(document.getElementById('map'), {
-      center: { lat: 38.4, lng: -122.7 },
+      center: { lat: 39.0, lng: -76.8 },
       zoom: 9,
     });
   }
