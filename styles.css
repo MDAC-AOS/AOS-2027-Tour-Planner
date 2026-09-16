@@ -420,8 +420,16 @@ main {
   border-color: var(--color-twilight-indigo);
 }
 
-.filter-select {
+.filter-multiselect {
+  position: relative;
+}
+
+.filter-multiselect__btn {
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-family: var(--font-body);
   font-size: 0.9rem;
   padding: 9px 13px;
@@ -429,12 +437,60 @@ main {
   border: 1.5px solid rgba(37, 53, 81, 0.25);
   background: #ffffff;
   color: var(--color-text);
+  cursor: pointer;
   box-sizing: border-box;
+  text-align: left;
 }
 
-.filter-select:focus {
-  outline: none;
-  border-color: var(--color-twilight-indigo);
+.filter-multiselect__btn::after {
+  content: '▾';
+  color: rgba(37, 53, 81, 0.5);
+  flex-shrink: 0;
+}
+
+.filter-multiselect__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 30;
+  padding: 6px 0;
+}
+
+.filter-multiselect__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 13px;
+  font-size: 0.88rem;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.filter-multiselect__option:hover {
+  background: #f5f5f5;
+}
+
+.filter-multiselect__clear {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 13px;
+  border: none;
+  background: none;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 4px;
+  font-family: var(--font-meta);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: var(--color-flag-red);
+  cursor: pointer;
 }
 
 .chip-row {

@@ -12,7 +12,12 @@ const state = {
   // combine per breakpoint.
   view: 'list',
   railView: 'map',
-  filters: { groupType: 'all', county: 'all', medium: 'all', search: '' },
+  // county/medium support picking more than one value at once; groupType
+  // stays single-select (only 4 possible values, no need for the extra
+  // complexity). 'all'/empty array both mean "no filter applied."
+  filters: { groupType: 'all', county: [], medium: [], search: '' },
+  countyPanelOpen: false,
+  mediumPanelOpen: false,
   plan: [],
   planDay: 'Saturday',
   pending: null,
@@ -350,8 +355,8 @@ function applyFilters() {
   const searchTerm = search.trim().toLowerCase();
   return state.all.filter((artist) => {
     const matchesGroupType = groupType === 'all' || artist.groupType === groupType;
-    const matchesCounty = county === 'all' || artist.county === county;
-    const matchesMedium = medium === 'all' || artist.medium === medium;
+    const matchesCounty = county.length === 0 || county.includes(artist.county);
+    const matchesMedium = medium.length === 0 || medium.includes(artist.medium);
     const matchesSearch = !searchTerm || displayName(artist).toLowerCase().includes(searchTerm);
     return matchesGroupType && matchesCounty && matchesMedium && matchesSearch;
   });
@@ -369,19 +374,6 @@ function chipRow(container, options, activeValue, onPick) {
   });
 }
 
-// A native <select> instead of a chip row — with 20+ counties or mediums
-// once registrations fill out, a horizontally-scrolling chip row gets
-// cumbersome on a phone, where a select opens as a normal scrollable list.
-// Uses .onchange (not addEventListener) since the <select> element itself
-// persists across re-renders — only its options are replaced — so
-// addEventListener would stack a new listener on every renderChips() call.
-function filterSelect(selectEl, options, activeValue, onPick) {
-  selectEl.innerHTML = options
-    .map((opt) => `<option value="${escapeHtml(opt.value)}" ${opt.value === activeValue ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`)
-    .join('');
-  selectEl.onchange = () => onPick(selectEl.value);
-}
-
 function chipCol(container, options, activeValue, onPick, { withDots = false } = {}) {
   container.innerHTML = options
     .map((opt) => {
@@ -394,6 +386,79 @@ function chipCol(container, options, activeValue, onPick, { withDots = false } =
     .join('');
   container.querySelectorAll('.chip-side').forEach((btn) => {
     btn.addEventListener('click', () => onPick(btn.dataset.value));
+  });
+}
+
+// Sidebar (wide layout) multi-select: same chip look as chipCol, but more
+// than one can be active at once. The "all" option acts as a clear button
+// rather than a selectable state.
+function chipColMulti(container, options, activeValues, onToggle) {
+  container.innerHTML = options
+    .map((opt) => {
+      const active = opt.value === 'all' ? activeValues.length === 0 : activeValues.includes(opt.value);
+      return `<button type="button" class="chip-side ${active ? 'chip-side--active' : ''}" data-value="${escapeHtml(opt.value)}"><span>${escapeHtml(opt.label)}</span></button>`;
+    })
+    .join('');
+  container.querySelectorAll('.chip-side').forEach((btn) => {
+    btn.addEventListener('click', () => onToggle(btn.dataset.value));
+  });
+}
+
+// Narrow layout multi-select: a button showing a summary ("All counties" /
+// "Howard County" / "3 selected") that opens a checkbox list. Unlike the
+// old single-value <select> this replaces, more than one option can be
+// checked — a native <select multiple> would work too, but renders as an
+// unfamiliar, cramped list on iOS rather than a clean dropdown.
+//
+// getOpen/setOpen persist the panel's open state across renderChips()
+// rebuilds (every checkbox change re-renders the whole app to keep the
+// sidebar and this in sync) — without it, checking one box would close the
+// panel, defeating the point of a *multi*-select.
+function filterMultiSelect(container, options, activeValues, onToggle, getOpen, setOpen) {
+  const allLabel = options.find((opt) => opt.value === 'all').label;
+  const realOptions = options.filter((opt) => opt.value !== 'all');
+  const summary =
+    activeValues.length === 0 ? allLabel : activeValues.length === 1 ? activeValues[0] : `${activeValues.length} selected`;
+
+  container.innerHTML = `
+    <button type="button" class="filter-multiselect__btn">${escapeHtml(summary)}</button>
+    <div class="filter-multiselect__panel" ${getOpen() ? '' : 'hidden'}>
+      ${activeValues.length > 0 ? '<button type="button" class="filter-multiselect__clear">Clear</button>' : ''}
+      ${realOptions
+        .map(
+          (opt) =>
+            `<label class="filter-multiselect__option"><input type="checkbox" value="${escapeHtml(opt.value)}" ${activeValues.includes(opt.value) ? 'checked' : ''}><span>${escapeHtml(opt.label)}</span></label>`
+        )
+        .join('')}
+    </div>
+  `;
+
+  const btn = container.querySelector('.filter-multiselect__btn');
+  const panel = container.querySelector('.filter-multiselect__panel');
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = panel.hidden;
+    setOpen(willOpen);
+    panel.hidden = !willOpen;
+  });
+
+  panel.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+    checkbox.addEventListener('change', () => onToggle(checkbox.value));
+  });
+
+  const clearBtn = panel.querySelector('.filter-multiselect__clear');
+  if (clearBtn) clearBtn.addEventListener('click', () => onToggle('all'));
+}
+
+// Closes any open filter-multiselect panel on an outside click/tap.
+function wireFilterMultiSelectClose() {
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.filter-multiselect')) return;
+    if (!state.countyPanelOpen && !state.mediumPanelOpen) return;
+    state.countyPanelOpen = false;
+    state.mediumPanelOpen = false;
+    renderChips();
   });
 }
 
@@ -411,24 +476,56 @@ function renderChips() {
     renderChips();
     render();
   };
-  const pickCounty = (value) => {
-    state.filters.county = value;
+  const toggleCounty = (value) => {
+    if (value === 'all') {
+      state.filters.county = [];
+    } else {
+      const set = new Set(state.filters.county);
+      if (set.has(value)) set.delete(value);
+      else set.add(value);
+      state.filters.county = [...set];
+    }
     renderChips();
     render();
   };
-  const pickMedium = (value) => {
-    state.filters.medium = value;
+  const toggleMedium = (value) => {
+    if (value === 'all') {
+      state.filters.medium = [];
+    } else {
+      const set = new Set(state.filters.medium);
+      if (set.has(value)) set.delete(value);
+      else set.add(value);
+      state.filters.medium = [...set];
+    }
     renderChips();
     render();
   };
 
   chipRow(el.chipsGroup, groupOptions, state.filters.groupType, pickGroup);
-  filterSelect(el.chipsCounty, countyOptions, state.filters.county, pickCounty);
-  filterSelect(el.chipsMedium, mediumOptions, state.filters.medium, pickMedium);
+  filterMultiSelect(
+    el.chipsCounty,
+    countyOptions,
+    state.filters.county,
+    toggleCounty,
+    () => state.countyPanelOpen,
+    (open) => {
+      state.countyPanelOpen = open;
+    }
+  );
+  filterMultiSelect(
+    el.chipsMedium,
+    mediumOptions,
+    state.filters.medium,
+    toggleMedium,
+    () => state.mediumPanelOpen,
+    (open) => {
+      state.mediumPanelOpen = open;
+    }
+  );
 
   chipCol(el.chipsGroupSide, groupOptions, state.filters.groupType, pickGroup, { withDots: true });
-  chipCol(el.chipsCountySide, countyOptions, state.filters.county, pickCounty);
-  chipCol(el.chipsMediumSide, mediumOptions, state.filters.medium, pickMedium);
+  chipColMulti(el.chipsCountySide, countyOptions, state.filters.county, toggleCounty);
+  chipColMulti(el.chipsMediumSide, mediumOptions, state.filters.medium, toggleMedium);
 }
 
 // ---------- list view ----------
@@ -1099,7 +1196,9 @@ function wireSearchInput(inputEl, otherInputEl) {
 
 function wireResetFilters() {
   const reset = () => {
-    state.filters = { groupType: 'all', county: 'all', medium: 'all', search: '' };
+    state.filters = { groupType: 'all', county: [], medium: [], search: '' };
+    state.countyPanelOpen = false;
+    state.mediumPanelOpen = false;
     el.searchInput.value = '';
     el.searchInputSide.value = '';
     renderChips();
@@ -1506,6 +1605,7 @@ async function init() {
   wireDayTabs();
   wireShareButton();
   wireResetFilters();
+  wireFilterMultiSelectClose();
   wireSearchInput(el.searchInput, el.searchInputSide);
   wireSearchInput(el.searchInputSide, el.searchInput);
   wirePicker();
