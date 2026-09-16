@@ -420,6 +420,23 @@ main {
   border-color: var(--color-twilight-indigo);
 }
 
+.filter-select {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  padding: 9px 13px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(37, 53, 81, 0.25);
+  background: #ffffff;
+  color: var(--color-text);
+  box-sizing: border-box;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--color-twilight-indigo);
+}
+
 .chip-row {
   display: flex;
   gap: 6px;

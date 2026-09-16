@@ -369,6 +369,19 @@ function chipRow(container, options, activeValue, onPick) {
   });
 }
 
+// A native <select> instead of a chip row — with 20+ counties or mediums
+// once registrations fill out, a horizontally-scrolling chip row gets
+// cumbersome on a phone, where a select opens as a normal scrollable list.
+// Uses .onchange (not addEventListener) since the <select> element itself
+// persists across re-renders — only its options are replaced — so
+// addEventListener would stack a new listener on every renderChips() call.
+function filterSelect(selectEl, options, activeValue, onPick) {
+  selectEl.innerHTML = options
+    .map((opt) => `<option value="${escapeHtml(opt.value)}" ${opt.value === activeValue ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`)
+    .join('');
+  selectEl.onchange = () => onPick(selectEl.value);
+}
+
 function chipCol(container, options, activeValue, onPick, { withDots = false } = {}) {
   container.innerHTML = options
     .map((opt) => {
@@ -410,8 +423,8 @@ function renderChips() {
   };
 
   chipRow(el.chipsGroup, groupOptions, state.filters.groupType, pickGroup);
-  chipRow(el.chipsCounty, countyOptions, state.filters.county, pickCounty);
-  chipRow(el.chipsMedium, mediumOptions, state.filters.medium, pickMedium);
+  filterSelect(el.chipsCounty, countyOptions, state.filters.county, pickCounty);
+  filterSelect(el.chipsMedium, mediumOptions, state.filters.medium, pickMedium);
 
   chipCol(el.chipsGroupSide, groupOptions, state.filters.groupType, pickGroup, { withDots: true });
   chipCol(el.chipsCountySide, countyOptions, state.filters.county, pickCounty);
