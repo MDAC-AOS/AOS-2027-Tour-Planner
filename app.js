@@ -938,6 +938,7 @@ function renderDetail() {
     <div class="detail-section"><div class="detail-section__label">Phone</div><p>${artist.phone ? `<a href="tel:${escapeHtml(artist.phone)}">${escapeHtml(artist.phone)}</a>` : 'Not provided'}</p></div>
     ${artist.website ? `<div class="detail-section"><div class="detail-section__label">Website</div><p><a href="${escapeHtml(artist.website)}" target="_blank" rel="noopener">${escapeHtml(artist.website)}</a></p></div>` : ''}
     ${socialLinks.length ? `<div class="detail-section"><div class="detail-section__label">Social Media</div><div class="detail-social-links">${socialLinks.map((url) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="detail-social-link">${escapeHtml(socialPlatformLabel(url))} ↗</a>`).join('')}</div></div>` : ''}
+    ${(artist.studioAddress || artist.website || socialLinks.length) ? '<p class="detail-external-note">Directions, website, and social links open outside the app — on the installed app, swipe up or use your app switcher to come back.</p>' : ''}
     ${artist.accessibilityNotes ? `<div class="detail-section"><div class="detail-section__label">Accessibility Options</div><p>${escapeHtml(artist.accessibilityNotes)}</p></div>` : ''}
     ${photoGalleryHtml(imageUrls, name)}
     <button type="button" class="detail-add-btn ${inPlan ? 'detail-add-btn--active' : ''}" data-add-id="${artist.id}">${inPlan ? '✓ In My Day — remove' : 'Add to My Day'}</button>

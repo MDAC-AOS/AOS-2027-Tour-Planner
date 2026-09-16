@@ -1491,6 +1491,16 @@ main {
   border-top: 1px solid #e5e5e5;
 }
 
+.detail-external-note {
+  border: 2px dashed rgba(37, 53, 81, 0.28);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-top: 12px;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: rgba(37, 53, 81, 0.75);
+}
+
 .detail-section__label {
   font-family: var(--font-meta);
   font-size: 0.7rem;
