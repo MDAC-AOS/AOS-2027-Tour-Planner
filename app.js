@@ -68,6 +68,8 @@ const el = {
   installBannerText: document.getElementById('install-banner-text'),
   installBannerAction: document.getElementById('install-banner-action'),
   installBannerDismiss: document.getElementById('install-banner-dismiss'),
+  updateBanner: document.getElementById('update-banner'),
+  updateBannerAction: document.getElementById('update-banner-action'),
   pickerModal: document.getElementById('picker-modal'),
   pickerNote: document.getElementById('picker-note'),
   pickerSat: document.getElementById('picker-sat'),
@@ -938,7 +940,7 @@ function renderDetail() {
     <div class="detail-section"><div class="detail-section__label">Phone</div><p>${artist.phone ? `<a href="tel:${escapeHtml(artist.phone)}">${escapeHtml(artist.phone)}</a>` : 'Not provided'}</p></div>
     ${artist.website ? `<div class="detail-section"><div class="detail-section__label">Website</div><p><a href="${escapeHtml(artist.website)}" target="_blank" rel="noopener">${escapeHtml(artist.website)}</a></p></div>` : ''}
     ${socialLinks.length ? `<div class="detail-section"><div class="detail-section__label">Social Media</div><div class="detail-social-links">${socialLinks.map((url) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="detail-social-link">${escapeHtml(socialPlatformLabel(url))} ↗</a>`).join('')}</div></div>` : ''}
-    ${(artist.studioAddress || artist.website || socialLinks.length) ? '<p class="detail-external-note">Directions, website, and social links open outside the app — on the installed app, swipe up or use your app switcher to come back.</p>' : ''}
+    ${(artist.studioAddress || artist.website || socialLinks.length) ? '<p class="detail-external-note">Website and directions open in a browser view — tap the X to come back. Social links may open their app instead — swipe up or use your app switcher.</p>' : ''}
     ${artist.accessibilityNotes ? `<div class="detail-section"><div class="detail-section__label">Accessibility Options</div><p>${escapeHtml(artist.accessibilityNotes)}</p></div>` : ''}
     ${photoGalleryHtml(imageUrls, name)}
     <button type="button" class="detail-add-btn ${inPlan ? 'detail-add-btn--active' : ''}" data-add-id="${artist.id}">${inPlan ? '✓ In My Day — remove' : 'Add to My Day'}</button>
@@ -1508,8 +1510,34 @@ async function init() {
 
 init();
 
+// Without this, a visitor who already had the app open when a new version
+// was deployed would keep running the stale code indefinitely — the app
+// shell is cache-first (see sw.js) and nothing normally prompts a reload.
+// skipWaiting() + clients.claim() in sw.js mean a new version activates as
+// soon as it's found, but an already-running page has to actually reload
+// to pick it up — so this surfaces that moment instead of leaving it
+// silent, and proactively checks for updates rather than only relying on
+// the browser's own (less predictable) update-check timing.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch((err) => console.warn('Service worker registration failed:', err));
+    navigator.serviceWorker
+      .register('sw.js')
+      .then((registration) => {
+        setInterval(() => registration.update(), DATA_REFRESH_INTERVAL_MS);
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') registration.update();
+        });
+      })
+      .catch((err) => console.warn('Service worker registration failed:', err));
+  });
+
+  let reloadingForUpdate = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloadingForUpdate) return;
+    el.updateBanner.hidden = false;
+  });
+  el.updateBannerAction.addEventListener('click', () => {
+    reloadingForUpdate = true;
+    window.location.reload();
   });
 }
