@@ -78,6 +78,26 @@ button {
   color: var(--color-twilight-indigo);
 }
 
+.site-header__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.site-header__logo-link {
+  display: block;
+  line-height: 0;
+}
+
+.site-header__logo {
+  display: block;
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+}
+
 .conn-pill {
   display: flex;
   align-items: center;

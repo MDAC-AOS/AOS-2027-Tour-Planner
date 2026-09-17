@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aos-tour-shell-v5';
+const CACHE_NAME = 'aos-tour-shell-v6';
 const APP_SHELL = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const APP_SHELL = [
   './manifest.json',
   './icons/icon.svg',
   './icons/favicon.svg',
+  './icons/Logo-ArtistOpenStudios.png',
   './assets/photo-placeholder.jpg',
 ];
 
