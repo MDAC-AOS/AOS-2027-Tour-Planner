@@ -78,17 +78,10 @@ button {
   color: var(--color-twilight-indigo);
 }
 
-.site-header__right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
 .site-header__logo-link {
   display: block;
   line-height: 0;
+  flex-shrink: 0;
 }
 
 .site-header__logo {
@@ -99,10 +92,11 @@ button {
 }
 
 .conn-pill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  margin-top: 10px;
   font-family: var(--font-meta);
   font-size: 0.68rem;
   letter-spacing: 0.04em;
