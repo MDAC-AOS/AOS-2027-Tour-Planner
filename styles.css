@@ -54,11 +54,18 @@ button {
 
 .site-header__top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.site-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
 .site-header__eyebrow {
@@ -95,7 +102,6 @@ button {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
-  margin-top: 10px;
   font-family: var(--font-meta);
   font-size: 0.68rem;
   letter-spacing: 0.04em;
