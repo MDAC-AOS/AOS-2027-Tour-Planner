@@ -54,7 +54,7 @@ button {
 
 .site-header__top {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
   max-width: 1200px;
@@ -63,7 +63,7 @@ button {
 
 .site-header__brand {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 12px;
   min-width: 0;
 }
@@ -102,6 +102,12 @@ button {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  /* Optically aligns the pill's bottom with the baseline of "Plan Your
+     Day" (where "P" sits) instead of the full text box (which reaches
+     lower, to the bottom of "y"'s descender). Scales with
+     .site-header__title's own clamp() so it stays correct at any
+     viewport width — measured as ~0.378em of the title's font-size. */
+  margin-bottom: clamp(0.53rem, 1.51vw, 0.72rem);
   font-family: var(--font-meta);
   font-size: 0.68rem;
   letter-spacing: 0.04em;
