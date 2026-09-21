@@ -1136,7 +1136,9 @@ function render({ forceGridRebuild = false } = {}) {
   el.mapView.hidden = !showingMap;
   el.planView.hidden = !showingPlan;
   el.showAllPins.checked = state.showAllPins;
-  el.mapLegendNote.textContent = state.showAllPins ? 'Gray pins are outside your filters.' : 'Pins follow your filters.';
+  el.mapLegendNote.textContent = state.showAllPins
+    ? 'Gray pins are outside your filter choices.'
+    : 'Map pins follow your filter choices. To see all locations while filters are active, check the box below.';
 
   if (showingMap) {
     showMapView(filtered);
