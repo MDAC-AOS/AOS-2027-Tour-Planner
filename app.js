@@ -19,7 +19,7 @@ const state = {
   // 'medium', or null. A single value instead of two independent booleans
   // so opening one always closes the other; see filterMultiSelect() below.
   openFilterPanel: null,
-  // "Show all stops (dimmed)" on the map: pins outside the current filters
+  // "Show all locations" on the map: pins outside the current filters
   // are still drawn, grayed out. Off by default; not remembered between visits.
   showAllPins: false,
   plan: [],
@@ -1138,7 +1138,7 @@ function render({ forceGridRebuild = false } = {}) {
   el.showAllPins.checked = state.showAllPins;
   el.mapLegendNote.textContent = state.showAllPins
     ? 'Gray pins are outside your filter choices.'
-    : 'Map pins follow your filter choices. To see all locations while filters are active, check the box below.';
+    : "Map pins follow your filter choices. To also see locations outside your filters, check the box below. They'll show in gray.";
 
   if (showingMap) {
     showMapView(filtered);
