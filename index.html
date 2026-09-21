@@ -65,11 +65,11 @@
       </div>
       <div class="chip-filters__group">
         <div class="chip-filters__label">County</div>
-        <div class="chip-col" id="chips-county-side"></div>
+        <div class="filter-multiselect" id="chips-county-side"></div>
       </div>
       <div class="chip-filters__group">
         <div class="chip-filters__label">Medium</div>
-        <div class="chip-col" id="chips-medium-side"></div>
+        <div class="filter-multiselect" id="chips-medium-side"></div>
       </div>
       <div class="sidebar__note">Your plan is saved on this device and works without signal.</div>
     </aside>
@@ -114,7 +114,12 @@
         <div class="map-legend">
           <div class="map-legend__title">Legend — pins by group type</div>
           <div class="map-legend__grid" id="map-legend-grid"></div>
-          <div class="map-legend__note">Pins follow both filters.</div>
+          <div class="map-legend__note">A number on a pin means several stops share that location — tap it to see the list.</div>
+          <label class="map-legend__toggle">
+            <input type="checkbox" id="show-all-pins">
+            <span>Show all stops (dimmed)</span>
+          </label>
+          <div class="map-legend__note" id="map-legend-note">Pins follow your filters.</div>
         </div>
       </section>
 

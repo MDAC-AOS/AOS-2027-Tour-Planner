@@ -98,7 +98,7 @@ function showGroupInfoWindow(marker, group) {
 
   const items = group
     .map((entry) => {
-      const label = entry.fullName || entry.studioVenueName || 'Untitled Listing';
+      const label = displayName(entry);
       return `<li><button type="button" class="map-info__item" data-entry-id="${entry.id}">${escapeHtml(label)}</button></li>`;
     })
     .join('');
@@ -136,9 +136,11 @@ function roundedRectPath(x, y, size, radius) {
 // A pin shaped and iconed exactly like its legend entry (same fill color,
 // glyph, and border-radius shape). For a grouped pin covering entries of
 // different types, the first entry's visuals are used — there's no single
-// "correct" look when a location mixes group types.
-function groupMarkerIcon(groupType) {
-  const v = GROUP_VISUALS[groupType] || GROUP_VISUALS.Artist;
+// "correct" look when a location mixes group types. `dimmed` is the gray
+// variant for stops outside the current filters (see "Show all stops").
+function groupMarkerIcon(groupType, { dimmed = false } = {}) {
+  const base = GROUP_VISUALS[groupType] || GROUP_VISUALS.Artist;
+  const v = dimmed ? { ...base, color: '#c3c7cf', ink: '#ffffff' } : base;
   const size = 30;
   const strokeWidth = 2;
   const inset = strokeWidth / 2;
@@ -157,11 +159,17 @@ function groupMarkerIcon(groupType) {
   };
 }
 
+// `entries` is the filtered list. With "Show all stops" on, every listing gets
+// a pin, but pins with no entry in `entries` are drawn dimmed and the map
+// still zooms to just the matching ones.
 function renderMapMarkers(entries) {
   clearMarkers();
   if (!mapState.map) return;
 
-  const geocoded = entries.filter((entry) => {
+  const matchingIds = new Set(entries.map((entry) => entry.id));
+  const source = state.showAllPins ? state.all : entries;
+
+  const geocoded = source.filter((entry) => {
     const lat = parseFloat(entry.latitude);
     const lng = parseFloat(entry.longitude);
     return Number.isFinite(lat) && Number.isFinite(lng);
@@ -171,7 +179,9 @@ function renderMapMarkers(entries) {
   const bounds = new google.maps.LatLngBounds();
 
   groups.forEach((group) => {
-    const anchor = group.find((entry) => Number.isFinite(parseFloat(entry.latitude)) && Number.isFinite(parseFloat(entry.longitude)));
+    const isActive = group.some((entry) => matchingIds.has(entry.id));
+    // Prefer a matching entry so an active pin looks like what the filters selected.
+    const anchor = (isActive ? group.find((entry) => matchingIds.has(entry.id)) : group[0]);
     if (!anchor) return;
 
     const position = { lat: parseFloat(anchor.latitude), lng: parseFloat(anchor.longitude) };
@@ -179,8 +189,9 @@ function renderMapMarkers(entries) {
     const marker = new google.maps.Marker({
       position,
       map: mapState.map,
-      icon: groupMarkerIcon(anchor.groupType),
-      label: group.length > 1 ? { text: String(group.length), color: visuals.ink, fontWeight: 'bold' } : undefined,
+      icon: groupMarkerIcon(anchor.groupType, { dimmed: !isActive }),
+      zIndex: isActive ? 2 : 1,
+      label: group.length > 1 ? { text: String(group.length), color: isActive ? visuals.ink : '#ffffff', fontWeight: 'bold' } : undefined,
     });
 
     marker.addListener('click', () => {
@@ -192,7 +203,7 @@ function renderMapMarkers(entries) {
     });
 
     mapState.markers.push(marker);
-    bounds.extend(position);
+    if (isActive) bounds.extend(position);
   });
 
   if (!bounds.isEmpty()) {
@@ -249,7 +260,7 @@ async function renderPlanMap(stops) {
       position,
       map: planMapState.map,
       icon: groupMarkerIcon(stop.groupType),
-      title: stop.fullName || stop.studioVenueName || '',
+      title: displayName(stop),
     });
     marker.addListener('click', () => openDetail(stop.id));
     planMapState.markers.push(marker);

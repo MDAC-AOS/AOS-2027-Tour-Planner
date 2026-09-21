@@ -19,6 +19,9 @@ const state = {
   // 'medium', or null. A single value instead of two independent booleans
   // so opening one always closes the other; see filterMultiSelect() below.
   openFilterPanel: null,
+  // "Show all stops (dimmed)" on the map: pins outside the current filters
+  // are still drawn, grayed out. Off by default; not remembered between visits.
+  showAllPins: false,
   plan: [],
   planDay: 'Saturday',
   pending: null,
@@ -52,6 +55,8 @@ const el = {
   mapView: document.getElementById('map-view'),
   mapStatus: document.getElementById('map-status'),
   mapLegendGrid: document.getElementById('map-legend-grid'),
+  mapLegendNote: document.getElementById('map-legend-note'),
+  showAllPins: document.getElementById('show-all-pins'),
   planView: document.getElementById('plan-view'),
   planTitle: document.getElementById('plan-title'),
   planSummary: document.getElementById('plan-summary'),
@@ -363,9 +368,10 @@ function applyFilters() {
   });
 }
 
-// Narrow layout multi-select: horizontally-scrolling chip row, more than one
-// active at once. Used only for Group Type (just 4 options) — County/Medium
-// use filterMultiSelect's checkbox dropdown instead since they run 20+ deep.
+// Narrow layout Group Type: horizontally-scrolling chip row, more than one
+// active at once. Group Type keeps chips at every width (just a few options);
+// County/Medium use filterMultiSelect's checkbox dropdown at every width
+// instead, since they run 20+ deep.
 function chipRowMulti(container, options, activeValues, onToggle) {
   container.innerHTML = options
     .map((opt) => {
@@ -378,7 +384,7 @@ function chipRowMulti(container, options, activeValues, onToggle) {
   });
 }
 
-// Sidebar (wide layout) multi-select: more than one chip can be active at
+// Sidebar (wide layout) Group Type: more than one chip can be active at
 // once. The "all" option acts as a clear button rather than a selectable
 // state. `withDots` shows each option's Group Type color/shape swatch.
 function chipColMulti(container, options, activeValues, onToggle, { withDots = false } = {}) {
@@ -396,10 +402,10 @@ function chipColMulti(container, options, activeValues, onToggle, { withDots = f
   });
 }
 
-// Narrow layout multi-select: a button showing a summary ("All counties" /
-// "Howard County" / "3 selected") that opens a checkbox list. Unlike the
-// old single-value <select> this replaces, more than one option can be
-// checked — a native <select multiple> would work too, but renders as an
+// Multi-select dropdown used for County and Medium at every width (compact
+// filter card and wide-layout sidebar alike): a button showing a summary
+// ("All counties" / "Howard County" / "3 selected") that opens a checkbox
+// list. A native <select multiple> would work too, but renders as an
 // unfamiliar, cramped list on iOS rather than a clean dropdown.
 //
 // `isOpen` reflects state.openFilterPanel at render time. `setOpen` writes
@@ -445,11 +451,14 @@ function filterMultiSelect(container, options, activeValues, onToggle, isOpen, s
 // it. A click inside the OTHER (closed) filter-multiselect also counts as
 // "outside" here — that's what lets tapping County's button close an
 // already-open Medium panel, matching the mutual-exclusion in setOpen above.
+// Each dropdown exists twice (compact filter card + wide-layout sidebar, only
+// one visible at a time), so either copy counts as "inside."
 function wireFilterMultiSelectClose() {
   document.addEventListener('click', (e) => {
     if (!state.openFilterPanel) return;
-    const openContainer = state.openFilterPanel === 'county' ? el.chipsCounty : el.chipsMedium;
-    if (e.target.closest('.filter-multiselect') === openContainer) return;
+    const openContainers =
+      state.openFilterPanel === 'county' ? [el.chipsCounty, el.chipsCountySide] : [el.chipsMedium, el.chipsMediumSide];
+    if (openContainers.includes(e.target.closest('.filter-multiselect'))) return;
     state.openFilterPanel = null;
     renderChips();
   });
@@ -501,33 +510,24 @@ function renderChips() {
     render();
   };
 
+  const setCountyOpen = (open) => {
+    state.openFilterPanel = open ? 'county' : null;
+    renderChips();
+  };
+  const setMediumOpen = (open) => {
+    state.openFilterPanel = open ? 'medium' : null;
+    renderChips();
+  };
+  const countyOpen = state.openFilterPanel === 'county';
+  const mediumOpen = state.openFilterPanel === 'medium';
+
   chipRowMulti(el.chipsGroup, groupOptions, state.filters.groupType, toggleGroupType);
-  filterMultiSelect(
-    el.chipsCounty,
-    countyOptions,
-    state.filters.county,
-    toggleCounty,
-    state.openFilterPanel === 'county',
-    (open) => {
-      state.openFilterPanel = open ? 'county' : null;
-      renderChips();
-    }
-  );
-  filterMultiSelect(
-    el.chipsMedium,
-    mediumOptions,
-    state.filters.medium,
-    toggleMedium,
-    state.openFilterPanel === 'medium',
-    (open) => {
-      state.openFilterPanel = open ? 'medium' : null;
-      renderChips();
-    }
-  );
+  filterMultiSelect(el.chipsCounty, countyOptions, state.filters.county, toggleCounty, countyOpen, setCountyOpen);
+  filterMultiSelect(el.chipsMedium, mediumOptions, state.filters.medium, toggleMedium, mediumOpen, setMediumOpen);
 
   chipColMulti(el.chipsGroupSide, groupOptions, state.filters.groupType, toggleGroupType, { withDots: true });
-  chipColMulti(el.chipsCountySide, countyOptions, state.filters.county, toggleCounty);
-  chipColMulti(el.chipsMediumSide, mediumOptions, state.filters.medium, toggleMedium);
+  filterMultiSelect(el.chipsCountySide, countyOptions, state.filters.county, toggleCounty, countyOpen, setCountyOpen);
+  filterMultiSelect(el.chipsMediumSide, mediumOptions, state.filters.medium, toggleMedium, mediumOpen, setMediumOpen);
 }
 
 // ---------- list view ----------
@@ -1135,6 +1135,8 @@ function render({ forceGridRebuild = false } = {}) {
   document.getElementById('chip-filters').hidden = !wide && state.view === 'plan';
   el.mapView.hidden = !showingMap;
   el.planView.hidden = !showingPlan;
+  el.showAllPins.checked = state.showAllPins;
+  el.mapLegendNote.textContent = state.showAllPins ? 'Gray pins are outside your filters.' : 'Pins follow your filters.';
 
   if (showingMap) {
     showMapView(filtered);
@@ -1207,6 +1209,13 @@ function wireResetFilters() {
   };
   el.resetFilters.addEventListener('click', reset);
   el.resetFiltersSide.addEventListener('click', reset);
+}
+
+function wireShowAllPins() {
+  el.showAllPins.addEventListener('change', () => {
+    state.showAllPins = el.showAllPins.checked;
+    render();
+  });
 }
 
 function wireRailTabs() {
@@ -1603,6 +1612,7 @@ async function init() {
   renderMapLegend();
   wireTabs();
   wireRailTabs();
+  wireShowAllPins();
   wireDayTabs();
   wireShareButton();
   wireResetFilters();

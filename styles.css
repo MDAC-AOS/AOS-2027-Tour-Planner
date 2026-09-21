@@ -976,6 +976,16 @@ main {
   justify-content: center;
 }
 
+.map-legend__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--color-twilight-indigo);
+  cursor: pointer;
+}
+
 .map-legend__note {
   margin-top: 11px;
   font-family: var(--font-meta);
