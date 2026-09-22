@@ -250,6 +250,26 @@ function escapeHtml(value) {
   return div.innerHTML;
 }
 
+// Turns any http(s):// or www. URL written inside plain bio text into a
+// real, tappable link. The sheet only ever gives us plain text here, never
+// HTML, so this builds the anchor itself rather than trusting the input —
+// splitting on the URL pattern and escaping every piece (link text and
+// surrounding text alike) keeps it just as safe as a plain escapeHtml call.
+function linkifyText(text) {
+  return String(text || '')
+    .split(/(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi)
+    .map((part, i) => {
+      if (i % 2 === 0) return escapeHtml(part);
+      // Trim trailing punctuation that's almost certainly sentence
+      // punctuation, not part of the URL (e.g. "...my site: www.foo.com.").
+      const trailing = (part.match(/[.,;:!?)]+$/) || [''])[0];
+      const url = part.slice(0, part.length - trailing.length);
+      const href = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+      return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener">${escapeHtml(url)}</a>${escapeHtml(trailing)}`;
+    })
+    .join('');
+}
+
 function uniqueSorted(values) {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
@@ -1034,6 +1054,7 @@ function renderDetail() {
   document.getElementById('detail-share-btn').addEventListener('click', (e) => shareDetailLink(artist, e.currentTarget));
 
   const socialLinks = artist.socialLinks || [];
+  const bioHasLink = /https?:\/\/|www\.[a-z0-9]/i.test(artist.artistBio || '');
 
   el.detailBody.innerHTML = `
     <button type="button" class="link-btn detail-back-link" data-back-to-directory="1">← Back to Directory</button>
@@ -1044,7 +1065,7 @@ function renderDetail() {
     </div>
     ${artist.veteranLabel ? `<span class="status-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
     <h2 class="detail-name">${escapeHtml(name)}</h2>
-    ${artist.artistBio ? `<p class="detail-bio">${escapeHtml(artist.artistBio)}</p>` : ''}
+    ${artist.artistBio ? `<p class="detail-bio">${linkifyText(artist.artistBio)}</p>` : ''}
     ${memberNames.length ? `<p class="card__members"><strong>Artists:</strong> ${escapeHtml(memberNames.join(', '))}</p>` : ''}
     <div class="detail-section"><div class="detail-section__label">AOS Tour Days</div><p>${escapeHtml(artist.aosTourDays || 'Not provided')}</p></div>
     ${artist.studioAddress ? `<div class="detail-section"><div class="detail-section__label">Address</div><p>${escapeHtml(artist.studioAddress)}</p><a class="directions-btn" href="${escapeHtml(directionsUrl(artist.studioAddress))}" target="_blank" rel="noopener">Get Directions</a></div>` : ''}
@@ -1052,7 +1073,7 @@ function renderDetail() {
     <div class="detail-section"><div class="detail-section__label">Phone</div><p>${artist.phone ? `<a href="tel:${escapeHtml(artist.phone)}">${escapeHtml(artist.phone)}</a>` : 'Not provided'}</p></div>
     ${artist.website ? `<div class="detail-section"><div class="detail-section__label">Website</div><p><a href="${escapeHtml(artist.website)}" target="_blank" rel="noopener">${escapeHtml(artist.website)}</a></p></div>` : ''}
     ${socialLinks.length ? `<div class="detail-section"><div class="detail-section__label">Social Media</div><div class="detail-social-links">${socialLinks.map((url) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="detail-social-link">${escapeHtml(socialPlatformLabel(url))} ↗</a>`).join('')}</div></div>` : ''}
-    ${(artist.studioAddress || artist.website || socialLinks.length) ? '<p class="detail-external-note">Website and directions open in a browser view — tap the X to come back. Social links may open their app instead — swipe up or use your app switcher.</p>' : ''}
+    ${(artist.studioAddress || artist.website || socialLinks.length || bioHasLink) ? '<p class="detail-external-note">Website and directions open in a browser view — tap the X to come back. Social links may open their app instead — swipe up or use your app switcher.</p>' : ''}
     ${artist.accessibilityNotes ? `<div class="detail-section"><div class="detail-section__label">Accessibility Options</div><p>${escapeHtml(artist.accessibilityNotes)}</p></div>` : ''}
     ${photoGalleryHtml(imageUrls, name)}
     <button type="button" class="detail-add-btn ${inPlan ? 'detail-add-btn--active' : ''}" data-add-id="${artist.id}">${inPlan ? '✓ In My Day — remove' : 'Add to My Day'}</button>

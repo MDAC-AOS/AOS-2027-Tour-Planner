@@ -1593,6 +1593,10 @@ main {
   margin-top: 12px;
 }
 
+.detail-bio a {
+  color: var(--color-flag-red);
+}
+
 .detail-section {
   margin-top: 16px;
   padding-top: 14px;
