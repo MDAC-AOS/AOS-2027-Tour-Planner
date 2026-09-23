@@ -861,6 +861,10 @@ main {
   color: var(--color-text);
 }
 
+.card__members a {
+  color: var(--color-flag-red);
+}
+
 .card__members strong {
   color: var(--color-twilight-indigo);
 }

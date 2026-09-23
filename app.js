@@ -1054,7 +1054,8 @@ function renderDetail() {
   document.getElementById('detail-share-btn').addEventListener('click', (e) => shareDetailLink(artist, e.currentTarget));
 
   const socialLinks = artist.socialLinks || [];
-  const bioHasLink = /https?:\/\/|www\.[a-z0-9]/i.test(artist.artistBio || '');
+  const hasUrl = (text) => /https?:\/\/|www\.[a-z0-9]/i.test(text || '');
+  const bioHasLink = hasUrl(artist.artistBio) || hasUrl(memberNames.join(', '));
 
   el.detailBody.innerHTML = `
     <button type="button" class="link-btn detail-back-link" data-back-to-directory="1">← Back to Directory</button>
@@ -1066,7 +1067,7 @@ function renderDetail() {
     ${artist.veteranLabel ? `<span class="status-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
     <h2 class="detail-name">${escapeHtml(name)}</h2>
     ${artist.artistBio ? `<p class="detail-bio">${linkifyText(artist.artistBio)}</p>` : ''}
-    ${memberNames.length ? `<p class="card__members"><strong>Artists:</strong> ${escapeHtml(memberNames.join(', '))}</p>` : ''}
+    ${memberNames.length ? `<p class="card__members"><strong>Artists:</strong> ${linkifyText(memberNames.join(', '))}</p>` : ''}
     <div class="detail-section"><div class="detail-section__label">AOS Tour Days</div><p>${escapeHtml(artist.aosTourDays || 'Not provided')}</p></div>
     ${artist.studioAddress ? `<div class="detail-section"><div class="detail-section__label">Address</div><p>${escapeHtml(artist.studioAddress)}</p><a class="directions-btn" href="${escapeHtml(directionsUrl(artist.studioAddress))}" target="_blank" rel="noopener">Get Directions</a></div>` : ''}
     ${artist.directionsNotes ? `<div class="detail-section"><div class="detail-section__label">Directions</div><p>${escapeHtml(artist.directionsNotes)}</p></div>` : ''}
