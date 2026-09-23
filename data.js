@@ -63,6 +63,7 @@ const HEADER_FIELD_MAP = {
   howdidyouhearabouttheaostour: 'howHeard',
   studiogroupartistnames: 'studioGroupArtistNames',
   mediarepresented: 'mediaRepresented',
+  logourl: 'logoUrl',
 };
 
 function normalizeHeader(text) {
@@ -209,7 +210,11 @@ async function loadArtists() {
         studioVenueName: toTitleCase(record.studioVenueName),
         groupType: deriveGroupType(record),
         groupMemberNames: parseGroupMemberNames(record.studioGroupArtistNames),
-        imageUrls: parseImageUrls(record.imageUrl),
+        // Galleries never fill in the 3-photo field (it's hidden for them on
+        // the form) — they get a single logo upload instead. Folding it into
+        // the same imageUrls array means every downstream photo-rendering
+        // path (card, detail hero, gallery carousel) just works unchanged.
+        imageUrls: parseImageUrls(record.imageUrl).concat(record.logoUrl ? [record.logoUrl] : []).slice(0, 3),
         socialLinks: parseSocialLinks(record.socialMedia),
         mediaRepresented: splitList(record.mediaRepresented),
         veteranLabel: deriveVeteranLabel(record.tourParticipationCount),
