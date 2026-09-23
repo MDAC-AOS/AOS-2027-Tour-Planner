@@ -62,6 +62,7 @@ const HEADER_FIELD_MAP = {
   directionsnotes: 'directionsNotes',
   howdidyouhearabouttheaostour: 'howHeard',
   studiogroupartistnames: 'studioGroupArtistNames',
+  mediarepresented: 'mediaRepresented',
 };
 
 function normalizeHeader(text) {
@@ -210,6 +211,7 @@ async function loadArtists() {
         groupMemberNames: parseGroupMemberNames(record.studioGroupArtistNames),
         imageUrls: parseImageUrls(record.imageUrl),
         socialLinks: parseSocialLinks(record.socialMedia),
+        mediaRepresented: splitList(record.mediaRepresented),
         veteranLabel: deriveVeteranLabel(record.tourParticipationCount),
       };
     });

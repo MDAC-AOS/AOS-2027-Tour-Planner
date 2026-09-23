@@ -376,13 +376,24 @@ function cardTemplate(artist) {
 
 // ---------- filters ----------
 
+// A listing's searchable media: Individual Artists and Artist Group:
+// Individual Artist have exactly one (`medium`, single-select on the form);
+// Galleries and Artist Groups can have several (`mediaRepresented`, from
+// the multi-select "What mediums are represented in your space?" question).
+// Combined here so the Medium filter matches either shape the same way,
+// without ever showing a tag for the multi-select case (that's decided
+// separately in listingMeta/cardTemplate, not here).
+function artistMedia(artist) {
+  return [...(artist.medium ? [artist.medium] : []), ...(artist.mediaRepresented || [])];
+}
+
 function applyFilters() {
   const { groupType, county, medium, search } = state.filters;
   const searchTerm = search.trim().toLowerCase();
   return state.all.filter((artist) => {
     const matchesGroupType = groupType.length === 0 || groupType.includes(artist.groupType);
     const matchesCounty = county.length === 0 || county.includes(artist.county);
-    const matchesMedium = medium.length === 0 || medium.includes(artist.medium);
+    const matchesMedium = medium.length === 0 || artistMedia(artist).some((m) => medium.includes(m));
     const matchesSearch = !searchTerm || displayName(artist).toLowerCase().includes(searchTerm);
     return matchesGroupType && matchesCounty && matchesMedium && matchesSearch;
   });
@@ -487,7 +498,7 @@ function wireFilterMultiSelectClose() {
 function renderChips() {
   const groupTypes = uniqueSorted(state.all.map((a) => a.groupType));
   const counties = uniqueSorted(state.all.map((a) => a.county));
-  const mediums = uniqueSorted(state.all.map((a) => a.medium));
+  const mediums = uniqueSorted(state.all.flatMap(artistMedia));
 
   const groupOptions = [{ value: 'all', label: 'All types' }, ...groupTypes.map((g) => ({ value: g, label: g }))];
   const countyOptions = [{ value: 'all', label: 'All counties' }, ...counties.map((c) => ({ value: c, label: c }))];
