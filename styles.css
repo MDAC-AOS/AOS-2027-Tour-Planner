@@ -1633,6 +1633,15 @@ main {
   color: var(--color-text);
 }
 
+.detail-section .photo-gallery__hint {
+  font-family: var(--font-meta);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+  color: rgba(37, 53, 81, 0.65);
+  margin: 2px 0 0;
+}
+
 /* Every uploaded photo shown in full via object-fit: contain, unlike the
    cropped hero photo above — #fafafa fills the letterboxed space so an
    image that doesn't match the box's aspect ratio isn't padded with a

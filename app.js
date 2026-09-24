@@ -212,6 +212,7 @@ function photoGalleryHtml(imageUrls, name) {
   return `
     <div class="detail-section">
       <div class="detail-section__label">Photo Gallery</div>
+      <p class="photo-gallery__hint">Tap a photo to view it full screen. Swipe or use the arrows to browse. Tap the X to close.</p>
       <div class="photo-gallery">${items}</div>
     </div>
   `;
@@ -1177,6 +1178,35 @@ function wireLightbox() {
     else if (e.key === 'ArrowLeft') moveLightbox(-1);
     else if (e.key === 'ArrowRight') moveLightbox(1);
   });
+
+  // Swipe left/right to browse. Tracked on touchstart/touchend rather than
+  // touchmove, since we only need the net direction once the gesture ends,
+  // not a live-dragging effect.
+  let touchStartX = null;
+  let touchStartY = null;
+  el.lightbox.addEventListener(
+    'touchstart',
+    (e) => {
+      touchStartX = e.changedTouches[0].clientX;
+      touchStartY = e.changedTouches[0].clientY;
+    },
+    { passive: true }
+  );
+  el.lightbox.addEventListener(
+    'touchend',
+    (e) => {
+      if (touchStartX === null) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      touchStartX = null;
+      touchStartY = null;
+      // Require a mostly-horizontal swipe of meaningful distance, so an
+      // incidental tap or a vertical gesture doesn't accidentally browse.
+      if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+      moveLightbox(dx < 0 ? 1 : -1);
+    },
+    { passive: true }
+  );
 }
 
 // ---------- connection indicator ----------
