@@ -32,6 +32,9 @@ const state = {
   email: '',
   emailSent: false,
   incomingShare: null,
+  // Full-screen photo viewer for the detail page's Photo Gallery strip.
+  // null when closed; { urls, index } when open.
+  lightbox: null,
 };
 
 const el = {
@@ -91,6 +94,12 @@ const el = {
   connLabel: document.getElementById('conn-label'),
   mapOfflineNote: document.getElementById('map-offline-note'),
   planMapOfflineNote: document.getElementById('plan-map-offline-note'),
+  lightbox: document.getElementById('lightbox'),
+  lightboxImg: document.getElementById('lightbox-img'),
+  lightboxClose: document.getElementById('lightbox-close'),
+  lightboxPrev: document.getElementById('lightbox-prev'),
+  lightboxNext: document.getElementById('lightbox-next'),
+  lightboxCount: document.getElementById('lightbox-count'),
 };
 
 // ---------- persistence ----------
@@ -193,9 +202,9 @@ function photoGalleryHtml(imageUrls, name) {
   if (imageUrls.length === 0) return '';
   const items = imageUrls
     .map(
-      (url) => `
+      (url, i) => `
         <div class="photo-gallery__item">
-          <img src="${escapeHtml(url)}" alt="${escapeHtml(name)}" loading="lazy" onerror="this.closest('.photo-gallery__item').remove()">
+          <img src="${escapeHtml(url)}" alt="${escapeHtml(name)}" loading="lazy" data-open-lightbox="${i}" onerror="this.closest('.photo-gallery__item').remove()">
         </div>
       `
     )
@@ -1123,6 +1132,53 @@ function renderPicker() {
   el.pickerSun.textContent = 'Sunday';
 }
 
+// ---------- photo lightbox ----------
+
+function openLightbox(urls, index) {
+  if (!urls.length) return;
+  state.lightbox = { urls, index };
+  renderLightbox();
+}
+
+function closeLightbox() {
+  state.lightbox = null;
+  renderLightbox();
+}
+
+function moveLightbox(delta) {
+  if (!state.lightbox) return;
+  const { urls, index } = state.lightbox;
+  state.lightbox = { urls, index: (index + delta + urls.length) % urls.length };
+  renderLightbox();
+}
+
+function renderLightbox() {
+  const lb = state.lightbox;
+  el.lightbox.hidden = !lb;
+  if (!lb) return;
+  el.lightboxImg.src = lb.urls[lb.index];
+  const multiple = lb.urls.length > 1;
+  el.lightboxPrev.hidden = !multiple;
+  el.lightboxNext.hidden = !multiple;
+  el.lightboxCount.textContent = multiple ? `${lb.index + 1} / ${lb.urls.length}` : '';
+}
+
+function wireLightbox() {
+  el.lightboxClose.addEventListener('click', closeLightbox);
+  el.lightboxPrev.addEventListener('click', () => moveLightbox(-1));
+  el.lightboxNext.addEventListener('click', () => moveLightbox(1));
+  // Tapping the dark backdrop (not the photo or the controls) closes it.
+  el.lightbox.addEventListener('click', (e) => {
+    if (e.target === el.lightbox) closeLightbox();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (!state.lightbox) return;
+    if (e.key === 'Escape') closeLightbox();
+    else if (e.key === 'ArrowLeft') moveLightbox(-1);
+    else if (e.key === 'ArrowRight') moveLightbox(1);
+  });
+}
+
 // ---------- connection indicator ----------
 
 function renderConnection() {
@@ -1184,6 +1240,7 @@ function render({ forceGridRebuild = false } = {}) {
 
   renderDetail();
   renderPicker();
+  renderLightbox();
 }
 
 // ---------- event wiring ----------
@@ -1470,6 +1527,12 @@ function handleDelegatedClick(e) {
     render();
     return;
   }
+  const lightboxThumb = e.target.closest('[data-open-lightbox]');
+  if (lightboxThumb) {
+    const artist = state.detailId !== null ? findArtist(state.detailId) : null;
+    if (artist) openLightbox(artist.imageUrls || [], Number(lightboxThumb.dataset.openLightbox));
+    return;
+  }
   const backBtn = e.target.closest('[data-back-to-directory]');
   if (backBtn) {
     backToDirectory();
@@ -1656,6 +1719,7 @@ async function init() {
   wireSearchInput(el.searchInputSide, el.searchInput);
   wirePicker();
   wireDetailBack();
+  wireLightbox();
   wireResponsiveBreakpoint();
   wireBackToTop(el.grid, el.backToTopDirectory);
   wireBackToTop(el.planView, el.backToTopPlan);
