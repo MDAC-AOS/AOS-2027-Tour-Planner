@@ -239,6 +239,12 @@ main {
   color: var(--color-twilight-indigo);
 }
 
+.sidebar__result-count {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
 .sidebar .chip-filters__group {
   margin-top: 18px;
 }

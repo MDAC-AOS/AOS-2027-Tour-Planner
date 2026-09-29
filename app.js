@@ -41,6 +41,7 @@ const el = {
   grid: document.getElementById('card-grid'),
   status: document.getElementById('status-message'),
   resultCount: document.getElementById('result-count'),
+  resultCountSide: document.getElementById('result-count-side'),
   resetFilters: document.getElementById('reset-filters'),
   searchInput: document.getElementById('search-input'),
   searchInputSide: document.getElementById('search-input-side'),
@@ -586,7 +587,9 @@ let lastRenderedGridSignature = null;
 // completing. Skipping the rebuild when nothing that affects the grid's
 // content has actually changed avoids disturbing in-flight loads.
 function renderList(filtered, { force = false } = {}) {
-  el.resultCount.textContent = `${filtered.length} listing${filtered.length === 1 ? '' : 's'}`;
+  const resultCountText = `${filtered.length} listing${filtered.length === 1 ? '' : 's'}`;
+  el.resultCount.textContent = resultCountText;
+  el.resultCountSide.textContent = resultCountText;
 
   if (filtered.length === 0) {
     el.grid.innerHTML = '<p class="status-message">No stops match those filters. Try widening your search.</p>';

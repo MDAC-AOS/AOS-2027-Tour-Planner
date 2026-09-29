@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aos-tour-shell-v19';
+const CACHE_NAME = 'aos-tour-shell-v20';
 const APP_SHELL = [
   './',
   './index.html',
