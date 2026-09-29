@@ -549,47 +549,12 @@ main {
   opacity: 1;
 }
 
-/* Tap target for anyone who wouldn't think to swipe a row of chips — same
-   idea as .gallery__arrow on the photo carousel. Shown/hidden together
-   with the fade above, via the same modifier class. */
-.chip-row-arrow {
-  display: none;
-  position: absolute;
-  top: 50%;
-  right: 3px;
-  transform: translateY(-50%);
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: none;
-  background: var(--color-twilight-indigo);
-  color: var(--color-bright-gold);
-  font-size: 1rem;
-  line-height: 1;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 6px rgba(37, 53, 81, 0.35);
-}
-
-.chip-row-wrap--scrollable .chip-row-arrow {
-  display: flex;
-}
-
 .chip-row {
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  padding-bottom: 2px;
-  /* Hidden like .gallery__track's carousel scrollbar — the fade on
-     .chip-row-wrap is the "more content" signal instead, so a visible
-     scrollbar track is redundant and just crowds the chips. */
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.chip-row::-webkit-scrollbar {
-  display: none;
+  /* Breathing room between the chips and the visible scrollbar below them. */
+  padding-bottom: 10px;
 }
 
 .chip {

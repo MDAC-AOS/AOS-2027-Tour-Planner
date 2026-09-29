@@ -47,7 +47,6 @@ const el = {
   searchInputSide: document.getElementById('search-input-side'),
   chipsGroup: document.getElementById('chips-group'),
   chipsGroupWrap: document.getElementById('chips-group-wrap'),
-  chipsGroupArrow: document.getElementById('chips-group-arrow'),
   chipsCounty: document.getElementById('chips-county'),
   chipsMedium: document.getElementById('chips-medium'),
   chipsGroupSide: document.getElementById('chips-group-side'),
@@ -442,11 +441,6 @@ function updateChipRowFade() {
 function wireChipRowFade() {
   el.chipsGroup.addEventListener('scroll', updateChipRowFade, { passive: true });
   window.addEventListener('resize', updateChipRowFade);
-  // Tapping the arrow reveals the rest in one go — there's never more than
-  // a handful of chips, so there's no need to page through it incrementally.
-  el.chipsGroupArrow.addEventListener('click', () => {
-    el.chipsGroup.scrollTo({ left: el.chipsGroup.scrollWidth, behavior: 'smooth' });
-  });
 }
 
 // Sidebar (wide layout) Group Type: more than one chip can be active at
