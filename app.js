@@ -46,6 +46,8 @@ const el = {
   searchInput: document.getElementById('search-input'),
   searchInputSide: document.getElementById('search-input-side'),
   chipsGroup: document.getElementById('chips-group'),
+  chipsGroupWrap: document.getElementById('chips-group-wrap'),
+  chipsGroupArrow: document.getElementById('chips-group-arrow'),
   chipsCounty: document.getElementById('chips-county'),
   chipsMedium: document.getElementById('chips-medium'),
   chipsGroupSide: document.getElementById('chips-group-side'),
@@ -426,6 +428,27 @@ function chipRowMulti(container, options, activeValues, onToggle) {
   });
 }
 
+// Shows the chip-row-wrap's right-edge fade only while there's still more
+// to scroll to — hidden both when everything already fits, and once
+// scrolled to the end, so it never hints at content that isn't there.
+function updateChipRowFade() {
+  const row = el.chipsGroup;
+  const hasMoreToScroll = row.scrollWidth > row.clientWidth + row.scrollLeft + 1;
+  el.chipsGroupWrap.classList.toggle('chip-row-wrap--scrollable', hasMoreToScroll);
+}
+
+// el.chipsGroup itself persists across renderChips() calls (only its
+// children are replaced), so this only needs wiring once.
+function wireChipRowFade() {
+  el.chipsGroup.addEventListener('scroll', updateChipRowFade, { passive: true });
+  window.addEventListener('resize', updateChipRowFade);
+  // Tapping the arrow reveals the rest in one go — there's never more than
+  // a handful of chips, so there's no need to page through it incrementally.
+  el.chipsGroupArrow.addEventListener('click', () => {
+    el.chipsGroup.scrollTo({ left: el.chipsGroup.scrollWidth, behavior: 'smooth' });
+  });
+}
+
 // Sidebar (wide layout) Group Type: more than one chip can be active at
 // once. The "all" option acts as a clear button rather than a selectable
 // state. `withDots` shows each option's Group Type color/shape swatch.
@@ -564,6 +587,7 @@ function renderChips() {
   const mediumOpen = state.openFilterPanel === 'medium';
 
   chipRowMulti(el.chipsGroup, groupOptions, state.filters.groupType, toggleGroupType);
+  updateChipRowFade();
   filterMultiSelect(el.chipsCounty, countyOptions, state.filters.county, toggleCounty, countyOpen, setCountyOpen);
   filterMultiSelect(el.chipsMedium, mediumOptions, state.filters.medium, toggleMedium, mediumOpen, setMediumOpen);
 
@@ -1748,6 +1772,7 @@ async function init() {
   wireShareButton();
   wireResetFilters();
   wireFilterMultiSelectClose();
+  wireChipRowFade();
   wireSearchInput(el.searchInput, el.searchInputSide);
   wireSearchInput(el.searchInputSide, el.searchInput);
   wirePicker();
