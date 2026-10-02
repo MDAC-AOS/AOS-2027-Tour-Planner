@@ -399,6 +399,30 @@ function artistMedia(artist) {
   return [...(artist.medium ? [artist.medium] : []), ...(artist.mediaRepresented || [])];
 }
 
+const NAME_SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv']);
+
+// Directory order: individual artists sort by last name; Artist Groups,
+// Galleries and Museums sort by the start of their name, skipping a leading
+// "The". Last name is the final word of the full name, ignoring a trailing
+// Jr/Sr/II/III/IV — good for nearly every name, but a multi-word surname
+// (e.g. "De La Cruz") would sort under its last word.
+function directorySortKey(artist) {
+  const name = displayName(artist).trim();
+  if (artist.groupType !== 'Artist') return name.replace(/^the\s+/i, '');
+  const words = name.split(/\s+/).filter(Boolean);
+  while (words.length > 1 && NAME_SUFFIXES.has(words[words.length - 1].toLowerCase().replace(/[.,]/g, ''))) {
+    words.pop();
+  }
+  return words[words.length - 1] || name;
+}
+
+function compareDirectory(a, b) {
+  const byKey = directorySortKey(a).localeCompare(directorySortKey(b), undefined, { sensitivity: 'base' });
+  // Same last name (or same group name): fall back to the full name, so
+  // artists sharing a surname end up ordered by first name.
+  return byKey || displayName(a).localeCompare(displayName(b), undefined, { sensitivity: 'base' });
+}
+
 function applyFilters() {
   const { groupType, county, medium, search } = state.filters;
   const searchTerm = search.trim().toLowerCase();
@@ -408,7 +432,7 @@ function applyFilters() {
     const matchesMedium = medium.length === 0 || artistMedia(artist).some((m) => medium.includes(m));
     const matchesSearch = !searchTerm || displayName(artist).toLowerCase().includes(searchTerm);
     return matchesGroupType && matchesCounty && matchesMedium && matchesSearch;
-  });
+  }).sort(compareDirectory);
 }
 
 // Narrow layout Group Type: horizontally-scrolling chip row, more than one
