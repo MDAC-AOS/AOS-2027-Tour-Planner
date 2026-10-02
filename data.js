@@ -158,11 +158,16 @@ function deriveVeteranLabel(raw) {
 // sheet entries normalize the same way), with special handling for
 // Mc/Mac surname prefixes. The 2+ character remainder requirement avoids
 // misfiring on names like "Macy" or "Mack" that merely start with "Mac".
+// Names in NOT_MAC_PREFIX start with "Mac" but aren't Mac-prefixed surnames
+// (Machado is Mach-ado, not Mac-Hado), so they get plain capitalization.
+const NOT_MAC_PREFIX = new Set(['machinchick', 'machado', 'machin']);
+
 function titleCaseWord(word) {
   if (!word) return word;
   const lower = word.toLowerCase();
   let m = lower.match(/^mc([a-z]{2,})$/);
   if (m) return 'Mc' + m[1][0].toUpperCase() + m[1].slice(1);
+  if (NOT_MAC_PREFIX.has(lower)) return lower[0].toUpperCase() + lower.slice(1);
   m = lower.match(/^mac([a-z]{2,})$/);
   if (m) return 'Mac' + m[1][0].toUpperCase() + m[1].slice(1);
   return lower[0].toUpperCase() + lower.slice(1);
