@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aos-tour-shell-v28';
+const CACHE_NAME = 'aos-tour-shell-v29';
 const APP_SHELL = [
   './',
   './index.html',
@@ -40,7 +40,10 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') {
     return;
   }
+  // ignoreSearch: shared links (?artist=…, ?shareDay=…&stops=…) are the same
+  // page as "/" — the app reads the query itself — so they should match the
+  // cached shell and open offline instead of failing as an uncached URL.
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    caches.match(event.request, { ignoreSearch: true }).then((cached) => cached || fetch(event.request))
   );
 });
