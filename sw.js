@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aos-tour-shell-v31';
+const CACHE_NAME = 'aos-tour-shell-v32';
 const APP_SHELL = [
   './',
   './index.html',
@@ -6,6 +6,7 @@ const APP_SHELL = [
   './config.js',
   './data.js',
   './map.js',
+  './analytics.js',
   './app.js',
   './manifest.json',
   './icons/icon.svg',

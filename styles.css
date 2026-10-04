@@ -1303,6 +1303,28 @@ main {
   margin: 7px 0 0;
 }
 
+.privacy-note {
+  margin: 14px 0 0;
+  font-size: 0.74rem;
+  line-height: 1.55;
+  color: rgba(37, 53, 81, 0.6);
+}
+
+/* Narrow layout: a quiet line at the very bottom of the page. The wide
+   layout shows the same line in the sidebar instead. */
+.privacy-note--footer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px 90px;
+  text-align: center;
+}
+
+@media (min-width: 1024px) {
+  .privacy-note--footer {
+    display: none;
+  }
+}
+
 .plan-footer-note {
   border: 2px dashed rgba(37, 53, 81, 0.28);
   border-radius: 14px;

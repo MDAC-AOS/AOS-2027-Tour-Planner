@@ -584,7 +584,10 @@ function renderChips() {
     } else {
       const set = new Set(state.filters.groupType);
       if (set.has(value)) set.delete(value);
-      else set.add(value);
+      else {
+        set.add(value);
+        track('Use Filter', { filter: 'group type' });
+      }
       state.filters.groupType = [...set];
     }
     renderChips();
@@ -596,7 +599,10 @@ function renderChips() {
     } else {
       const set = new Set(state.filters.county);
       if (set.has(value)) set.delete(value);
-      else set.add(value);
+      else {
+        set.add(value);
+        track('Use Filter', { filter: 'county' });
+      }
       state.filters.county = [...set];
     }
     renderChips();
@@ -608,7 +614,10 @@ function renderChips() {
     } else {
       const set = new Set(state.filters.medium);
       if (set.has(value)) set.delete(value);
-      else set.add(value);
+      else {
+        set.add(value);
+        track('Use Filter', { filter: 'medium' });
+      }
       state.filters.medium = [...set];
     }
     renderChips();
@@ -941,6 +950,7 @@ function renderSharePanel(day, stops) {
     render();
   });
   document.getElementById('share-image').addEventListener('click', (e) => {
+    track('Share My Day', { method: 'image' });
     const btn = e.currentTarget;
     const original = btn.textContent;
     btn.textContent = 'Preparing…';
@@ -951,6 +961,7 @@ function renderSharePanel(day, stops) {
     });
   });
   document.getElementById('share-copy-btn').addEventListener('click', async () => {
+    track('Share My Day', { method: 'copy link' });
     try {
       await navigator.clipboard.writeText(link);
     } catch (err) {
@@ -965,10 +976,16 @@ function renderSharePanel(day, stops) {
     state.emailSent = false;
     render();
   });
-  document.getElementById('share-print').addEventListener('click', () => window.print());
+  document.getElementById('share-print').addEventListener('click', () => {
+    track('Share My Day', { method: 'print' });
+    window.print();
+  });
+  const textTile = el.sharePanel.querySelector('a.share-tile');
+  if (textTile) textTile.addEventListener('click', () => track('Share My Day', { method: 'text' }));
   const moreBtn = document.getElementById('share-more');
   if (moreBtn) {
     moreBtn.addEventListener('click', () => {
+      track('Share My Day', { method: 'more' });
       navigator.share({ title: `My AOS Tour plan — ${day}`, text, url: link }).catch(() => {});
     });
   }
@@ -979,6 +996,7 @@ function renderSharePanel(day, stops) {
       state.emailSent = false;
     });
     document.getElementById('share-email-send').addEventListener('click', () => {
+      track('Share My Day', { method: 'email' });
       const subject = encodeURIComponent(`My AOS Tour plan — ${day}`);
       const body = encodeURIComponent(text + '\n\n' + link);
       const to = encodeURIComponent(state.email || '');
@@ -1030,6 +1048,7 @@ function renderPlanView() {
     if (addBtn) {
       addBtn.addEventListener('click', () => {
         const share = state.incomingShare;
+        track('Add Shared Stops', { day: share.day });
         share.ids.forEach((id) => {
           if (!isInPlan(id) && findArtist(id)) {
             state.plan.push({ id, day: share.day });
@@ -1064,6 +1083,8 @@ function clearShareParamsFromUrl() {
 // ---------- detail overlay ----------
 
 function openDetail(id) {
+  const artist = findArtist(id);
+  if (artist) track('View Listing', { type: artist.groupType, name: displayName(artist) });
   state.detailId = id;
   render();
 }
@@ -1089,6 +1110,7 @@ function detailShareUrl(id) {
 }
 
 async function shareDetailLink(artist, button) {
+  track('Share Listing', { type: artist.groupType });
   const url = detailShareUrl(artist.id);
   if (navigator.share) {
     try {
@@ -1185,6 +1207,8 @@ function requestAdd(id) {
 
 function commitDay(day) {
   if (state.pending === null) return;
+  const added = findArtist(state.pending);
+  track('Add to My Day', { type: added ? added.groupType : 'unknown', day });
   state.plan = state.plan.concat({ id: state.pending, day });
   state.planDay = day;
   state.pending = null;
@@ -1347,6 +1371,7 @@ function wireTabs() {
   el.tabs.forEach((btn) => {
     btn.addEventListener('click', () => {
       state.view = btn.dataset.view;
+      track('View Tab', { tab: btn.dataset.view === 'plan' ? 'my day' : btn.dataset.view });
       el.tabs.forEach((b) => {
         b.classList.toggle('tabs__btn--active', b === btn);
         b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
@@ -1372,6 +1397,7 @@ function wireDayTabs() {
 function wireShareButton() {
   el.planShareBtn.addEventListener('click', () => {
     state.share = !state.share;
+    if (state.share) track('Open Share Panel');
     state.copied = false;
     render();
   });
@@ -1380,8 +1406,14 @@ function wireShareButton() {
 // Keeps the wide-layout sidebar search box and the narrow-layout chip-filters
 // search box showing the same value, without fighting whichever one the
 // visitor is actively typing into.
+let searchTrackTimer = null;
+
 function wireSearchInput(inputEl, otherInputEl) {
   inputEl.addEventListener('input', () => {
+    // Counts that search was used, once per burst of typing. The text itself
+    // is never sent.
+    clearTimeout(searchTrackTimer);
+    if (inputEl.value.trim()) searchTrackTimer = setTimeout(() => track('Use Search'), 1500);
     state.filters.search = inputEl.value;
     otherInputEl.value = inputEl.value;
     render();
@@ -1412,6 +1444,7 @@ function wireRailTabs() {
   el.railTabs.forEach((btn) => {
     btn.addEventListener('click', () => {
       state.railView = btn.dataset.rail;
+      track('View Tab', { tab: btn.dataset.rail === 'plan' ? 'my day' : btn.dataset.rail });
       el.railTabs.forEach((b) => b.classList.toggle('rail-tabs__btn--active', b === btn));
       render();
     });
@@ -1532,6 +1565,7 @@ function wireInstallPrompt() {
       el.installBanner.hidden = true;
     }
   });
+  window.addEventListener('appinstalled', () => track('Installed App'));
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
@@ -1804,6 +1838,12 @@ async function init() {
   }
 
   const incoming = readIncomingShare();
+  // Opening someone else's shared link is the clearest sign sharing spreads
+  // the tour to new people, so it gets its own count.
+  track('pageview');
+  if (incoming) track('Opened Shared Link', { kind: 'my day' });
+  else if (state.detailId !== null) track('Opened Shared Link', { kind: 'listing' });
+  flushAnalyticsQueue();
   if (incoming) {
     state.incomingShare = incoming;
     state.view = 'plan';
