@@ -113,7 +113,7 @@ function showGroupInfoWindow(marker, group) {
     .join('');
 
   mapState.infoWindow.setContent(
-    `<div class="map-info"><strong class="map-info__title">${group.length} entries here</strong><ul class="map-info__list">${items}</ul></div>`
+    `<div class="map-info"><strong class="map-info__title">${group.length} stops in this area</strong><ul class="map-info__list">${items}</ul></div>`
   );
   mapState.infoWindow.open({ map: mapState.map, anchor: marker });
 
@@ -147,7 +147,12 @@ function roundedRectPath(x, y, size, radius) {
 // different types, the first entry's visuals are used — there's no single
 // "correct" look when a location mixes group types. `dimmed` is the gray
 // variant for stops outside the current filters (see "Show all stops").
-function groupMarkerIcon(groupType, { dimmed = false } = {}) {
+//
+// `count` > 1 adds a round number badge on the pin's top-right corner. It's
+// drawn into the icon itself rather than using the Maps marker `label`, which
+// is always centered on the icon — right on top of the glyph, in the glyph's
+// own color — and so disappears into it (navy number over a navy building).
+function groupMarkerIcon(groupType, { dimmed = false, count = 0 } = {}) {
   const base = GROUP_VISUALS[groupType] || GROUP_VISUALS.Artist;
   const v = dimmed ? { ...base, color: '#c3c7cf', ink: '#ffffff' } : base;
   const size = 30;
@@ -157,14 +162,29 @@ function groupMarkerIcon(groupType, { dimmed = false } = {}) {
   const iconSize = 16;
   const iconOffset = (size - iconSize) / 2;
   const shapePath = roundedRectPath(inset, inset, boxSize, v.radius);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
+
+  const hasBadge = count > 1;
+  const pad = hasBadge ? 8 : 0; // extra room above/right of the pin for the badge
+  const canvas = size + pad;
+  const badgeX = size - 3;
+  const badgeY = pad + 3;
+  const text = String(count);
+  const badge = hasBadge
+    ? `<circle cx="${badgeX}" cy="${badgeY}" r="9" fill="${dimmed ? '#8a8f9a' : '#253551'}" stroke="#ffffff" stroke-width="1.5"/>` +
+      `<text x="${badgeX}" y="${badgeY + (text.length > 1 ? 3.5 : 4)}" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-weight="700" font-size="${text.length > 1 ? 10 : 11.5}" fill="#ffffff">${text}</text>`
+    : '';
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas}" height="${canvas}" viewBox="0 0 ${canvas} ${canvas}">` +
+    `<g transform="translate(0,${pad})">` +
     `<path d="${shapePath}" fill="${v.color}" stroke="#ffffff" stroke-width="${strokeWidth}"/>` +
     `<g transform="translate(${iconOffset},${iconOffset}) scale(${iconSize / 20})"><path d="${v.icon}" fill="${v.ink}"/></g>` +
-    `</svg>`;
+    `</g>${badge}</svg>`;
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(size, size),
-    anchor: new google.maps.Point(size / 2, size / 2),
+    scaledSize: new google.maps.Size(canvas, canvas),
+    // Anchored on the pin's center, not the (larger) canvas's, so the pin
+    // still sits exactly on its location with or without a badge.
+    anchor: new google.maps.Point(size / 2, pad + size / 2),
   };
 }
 
@@ -194,13 +214,11 @@ function renderMapMarkers(entries) {
     if (!anchor) return;
 
     const position = { lat: parseFloat(anchor.latitude), lng: parseFloat(anchor.longitude) };
-    const visuals = GROUP_VISUALS[anchor.groupType] || GROUP_VISUALS.Artist;
     const marker = new google.maps.Marker({
       position,
       map: mapState.map,
-      icon: groupMarkerIcon(anchor.groupType, { dimmed: !isActive }),
+      icon: groupMarkerIcon(anchor.groupType, { dimmed: !isActive, count: group.length }),
       zIndex: isActive ? 2 : 1,
-      label: group.length > 1 ? { text: String(group.length), color: isActive ? visuals.ink : '#ffffff', fontWeight: 'bold' } : undefined,
     });
 
     marker.addListener('click', () => {
