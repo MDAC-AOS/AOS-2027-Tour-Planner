@@ -151,8 +151,7 @@ window.nameFallbackHtml = nameFallbackHtml;
 // to begin with (not when a real photo fails to load — see above). Falls
 // back to the name tile too if the brand image itself is missing/fails.
 function placeholderPhotoHtml(name) {
-  const safeName = name.replace(/[\\']/g, '\\$&');
-  return `<img class="card__photo card__photo--branded" src="assets/photo-placeholder.jpg" alt="${escapeHtml(name)}" loading="lazy" onerror="this.outerHTML = nameFallbackHtml('${safeName}')">`;
+  return `<img class="card__photo card__photo--branded" src="assets/photo-placeholder.jpg" alt="${escapeHtml(name)}" loading="lazy" onerror="this.outerHTML = nameFallbackHtml('${jsAttrString(name)}')">`;
 }
 window.placeholderPhotoHtml = placeholderPhotoHtml;
 
@@ -163,7 +162,7 @@ window.placeholderPhotoHtml = placeholderPhotoHtml;
 // help here: they're already inside an on-screen scroll container).
 function photoSlideHtml(url, name, { deferred = false } = {}) {
   const srcAttr = deferred ? `data-src="${escapeHtml(url)}"` : `src="${escapeHtml(url)}"`;
-  return `<img class="card__photo" ${srcAttr} alt="${escapeHtml(name)}" loading="lazy" onerror="this.outerHTML = nameFallbackHtml('${name.replace(/[\\']/g, '\\$&')}')">`;
+  return `<img class="card__photo" ${srcAttr} alt="${escapeHtml(name)}" loading="lazy" onerror="this.outerHTML = nameFallbackHtml('${jsAttrString(name)}')">`;
 }
 
 // Artist Group / Gallery / Museum listings often upload a logo as their
@@ -256,10 +255,32 @@ function groupBadgeHtml(groupType, { inline = false } = {}) {
   `;
 }
 
+// Safe for both element text and quoted attribute values. Setting
+// textContent and reading innerHTML escapes & < > but NOT quotes, so a
+// value like `x" onmouseover="…` could break out of an attribute — hence
+// the explicit quote escaping below.
 function escapeHtml(value) {
   const div = document.createElement('div');
   div.textContent = value;
-  return div.innerHTML;
+  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Registrants type website/social addresses by hand, often without the
+// "https://" (e.g. "mysite.com"), which a bare href would treat as a page on
+// THIS site. Adds https:// when no scheme is given, and refuses any other
+// scheme (javascript:, data:, …) so a pasted value can't run code.
+function safeHref(raw) {
+  const url = String(raw || '').trim();
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url)) return url;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return '';
+  return `https://${url.replace(/^\/+/, '')}`;
+}
+
+// For text placed inside an inline onerror="…('HERE')" handler: it must be
+// escaped as a JS string first, then as an HTML attribute on top of that.
+function jsAttrString(value) {
+  return escapeHtml(String(value).replace(/[\\']/g, '\\$&').replace(/\s+/g, ' '));
 }
 
 // Turns any http(s):// or www. URL written inside plain bio text into a
@@ -300,7 +321,8 @@ function findArtist(id) {
 function listingMeta(artist) {
   const category = (artist.registrationCategory || '').trim().toLowerCase();
   const isArtistGroup = category === 'artist group';
-  const showsVenueName = isArtistGroup || category === 'gallery' || category === 'museum';
+  const showsVenueName =
+    isArtistGroup || category === 'gallery' || category === 'gallery-tier sponsor' || category === 'museum';
   const showsMedium = category === 'individual artist' || category === 'artist group: individual artist';
   return {
     showsVenueName,
@@ -1119,7 +1141,8 @@ function renderDetail() {
   document.getElementById('detail-back-inner').addEventListener('click', closeDetail);
   document.getElementById('detail-share-btn').addEventListener('click', (e) => shareDetailLink(artist, e.currentTarget));
 
-  const socialLinks = artist.socialLinks || [];
+  const socialLinks = (artist.socialLinks || []).filter((url) => safeHref(url));
+  const websiteHref = safeHref(artist.website);
   const hasUrl = (text) => /https?:\/\/|www\.[a-z0-9]/i.test(text || '');
   const bioHasLink = hasUrl(artist.artistBio) || hasUrl(memberNames.join(', '));
 
@@ -1138,8 +1161,8 @@ function renderDetail() {
     ${artist.studioAddress ? `<div class="detail-section"><div class="detail-section__label">Address</div><p>${escapeHtml(artist.studioAddress)}</p><a class="directions-btn" href="${escapeHtml(directionsUrl(artist.studioAddress))}" target="_blank" rel="noopener">Get Directions</a></div>` : ''}
     ${artist.directionsNotes ? `<div class="detail-section"><div class="detail-section__label">Directions</div><p>${escapeHtml(artist.directionsNotes)}</p></div>` : ''}
     <div class="detail-section"><div class="detail-section__label">Phone</div><p>${artist.phone ? `<a href="tel:${escapeHtml(artist.phone)}">${escapeHtml(artist.phone)}</a>` : 'Not provided'}</p></div>
-    ${artist.website ? `<div class="detail-section"><div class="detail-section__label">Website</div><p><a href="${escapeHtml(artist.website)}" target="_blank" rel="noopener">${escapeHtml(artist.website)}</a></p></div>` : ''}
-    ${socialLinks.length ? `<div class="detail-section"><div class="detail-section__label">Social Media</div><div class="detail-social-links">${socialLinks.map((url) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="detail-social-link">${escapeHtml(socialPlatformLabel(url))} ↗</a>`).join('')}</div></div>` : ''}
+    ${artist.website ? `<div class="detail-section"><div class="detail-section__label">Website</div><p>${websiteHref ? `<a href="${escapeHtml(websiteHref)}" target="_blank" rel="noopener">${escapeHtml(artist.website)}</a>` : escapeHtml(artist.website)}</p></div>` : ''}
+    ${socialLinks.length ? `<div class="detail-section"><div class="detail-section__label">Social Media</div><div class="detail-social-links">${socialLinks.map((url) => `<a href="${escapeHtml(safeHref(url))}" target="_blank" rel="noopener" class="detail-social-link">${escapeHtml(socialPlatformLabel(url))} ↗</a>`).join('')}</div></div>` : ''}
     ${(artist.studioAddress || artist.website || socialLinks.length || bioHasLink) ? '<p class="detail-external-note">Website and directions open in a browser view — tap the X to come back. Social links may open their app instead — swipe up or use your app switcher.</p>' : ''}
     ${artist.accessibilityNotes ? `<div class="detail-section"><div class="detail-section__label">Accessibility Options</div><p>${escapeHtml(artist.accessibilityNotes)}</p></div>` : ''}
     ${photoGalleryHtml(imageUrls, name)}
@@ -1712,6 +1735,9 @@ async function refreshArtistData() {
     artistDataVersion++;
     cacheArtists(fresh);
     lastArtistFetchAt = Date.now();
+    // Filter options are built from the data (e.g. a Gallery chip only
+    // exists once a gallery does), so they need rebuilding with it.
+    renderChips();
     render();
   } catch (err) {
     console.error('Background data refresh failed', err);
@@ -1736,6 +1762,13 @@ async function init() {
   renderConnection();
   window.addEventListener('online', () => {
     renderConnection();
+    // Opened for the first time with no signal: nothing ever loaded, and
+    // none of the app is wired up. Coming back online should just start
+    // over, not leave a misleading "no stops match" screen.
+    if (!state.all.length) {
+      window.location.reload();
+      return;
+    }
     // Photos that failed to load (falling back to the name tile) and the
     // map never retry on their own — regenerating the current view gives
     // them a fresh attempt now that signal is back, instead of requiring
@@ -1831,7 +1864,15 @@ if ('serviceWorker' in navigator) {
   });
 
   let reloadingForUpdate = false;
+  // A first-time visitor's page has no service worker yet; the worker
+  // claiming it on first install also fires controllerchange, but that's
+  // not an update — only a change after we were already controlled is.
+  let hasController = Boolean(navigator.serviceWorker.controller);
   navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hasController) {
+      hasController = true;
+      return;
+    }
     if (reloadingForUpdate) return;
     el.updateBanner.hidden = false;
   });

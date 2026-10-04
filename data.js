@@ -175,20 +175,36 @@ function titleCaseWord(word) {
 
 // Capitalizes after apostrophes too (o'brien -> O'Brien), on top of the
 // Mc/Mac handling in titleCaseWord.
+// Only a short prefix before the apostrophe (O', D', L') marks a name that
+// capitalizes what follows. After a longer word it's a possessive or
+// contraction (Joe's, Anne's), and the ending stays lowercase.
 function titleCaseSegment(segment) {
-  return segment
-    .split(/(['’])/)
-    .map((part) => (part === "'" || part === '’' ? part : titleCaseWord(part)))
+  const parts = segment.split(/(['’])/);
+  return parts
+    .map((part, i) => {
+      if (part === "'" || part === '’') return part;
+      if (i >= 2 && parts[i - 2].length > 2) return part.toLowerCase();
+      return titleCaseWord(part);
+    })
     .join('');
 }
 
 // Full title-case pass for a name/venue field: splits on spaces, then on
 // hyphens within each word, capitalizing every part (smith-jones ->
 // Smith-Jones) via titleCaseSegment.
-function toTitleCase(str) {
+//
+// `smallWords` (used for venue names, not people's names) keeps connecting
+// words lowercase when they aren't the first word: "Museum of the Arts",
+// not "Museum Of The Arts".
+const SMALL_WORDS = new Set(['of', 'the', 'and', 'at', 'in', 'on', 'for', 'to', 'by', 'with', 'or']);
+
+function toTitleCase(str, { smallWords = false } = {}) {
   return String(str || '')
     .split(' ')
-    .map((word) => word.split('-').map(titleCaseSegment).join('-'))
+    .map((word, i) => {
+      if (smallWords && i > 0 && SMALL_WORDS.has(word.toLowerCase())) return word.toLowerCase();
+      return word.split('-').map(titleCaseSegment).join('-');
+    })
     .join(' ');
 }
 
@@ -212,7 +228,7 @@ async function loadArtists() {
       return {
         ...record,
         fullName: toTitleCase(record.fullName),
-        studioVenueName: toTitleCase(record.studioVenueName),
+        studioVenueName: toTitleCase(record.studioVenueName, { smallWords: true }),
         groupType: deriveGroupType(record),
         groupMemberNames: parseGroupMemberNames(record.studioGroupArtistNames),
         // Galleries never fill in the 3-photo field (it's hidden for them on
