@@ -492,12 +492,30 @@ function wireChipRowFade() {
 // Sidebar (wide layout) Group Type: more than one chip can be active at
 // once. The "all" option acts as a clear button rather than a selectable
 // state. `withDots` shows each option's Group Type color/shape swatch.
+// GROUP_VISUALS radii are tuned for the 26–30px legend swatches and map pins.
+// On the 12px sidebar dot an 8px radius is more than half the width, so
+// Artist Group rounded into a circle and looked identical to Artist. Scaling
+// pixel radii down with the size keeps each type's shape distinct (percent
+// radii like Artist's 50% circle already scale on their own).
+const SIDEBAR_DOT_SIZE = 12;
+const SHAPE_REFERENCE_SIZE = 30;
+
+function scaleRadiusForSize(radius, size) {
+  return String(radius)
+    .split(/\s+/)
+    .map((token) => (token.endsWith('px') ? `${(parseFloat(token) * size / SHAPE_REFERENCE_SIZE).toFixed(1)}px` : token))
+    .join(' ');
+}
+
 function chipColMulti(container, options, activeValues, onToggle, { withDots = false } = {}) {
   container.innerHTML = options
     .map((opt) => {
       const active = opt.value === 'all' ? activeValues.length === 0 : activeValues.includes(opt.value);
+      const dotRadius = opt.value === 'all'
+        ? '3px'
+        : scaleRadiusForSize((GROUP_VISUALS[opt.value] || {}).radius || '3px', SIDEBAR_DOT_SIZE);
       const dot = withDots
-        ? `<span class="chip-side__dot" style="background:${opt.value === 'all' ? 'rgba(37,53,81,0.25)' : (GROUP_VISUALS[opt.value] || {}).color || '#ccc'}; border-radius:${opt.value === 'all' ? '3px' : (GROUP_VISUALS[opt.value] || {}).radius || '3px'};"></span>`
+        ? `<span class="chip-side__dot" style="background:${opt.value === 'all' ? 'rgba(37,53,81,0.25)' : (GROUP_VISUALS[opt.value] || {}).color || '#ccc'}; border-radius:${dotRadius};"></span>`
         : '';
       return `<button type="button" class="chip-side ${active ? 'chip-side--active' : ''}" data-value="${escapeHtml(opt.value)}">${dot}<span>${escapeHtml(opt.label)}</span></button>`;
     })
