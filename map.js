@@ -40,8 +40,15 @@ function loadGoogleMaps() {
   return promise;
 }
 
-// Union-find: two entries count as "the same location" if they share exact
-// lat/lng, or share a non-empty Studio/Venue Name, even transitively.
+// Entries this close count as one stop: the same building or complex, where
+// geocoding the same street address routinely lands a few feet to a few
+// dozen feet apart (e.g. 11810 Parklawn). ~50 m / ~165 ft — pins any closer
+// than that would sit on top of each other and hide one another anyway.
+const SAME_LOCATION_MILES = 50 / 1609.34;
+
+// Union-find: two entries count as "the same location" if they're within
+// SAME_LOCATION_MILES of each other, or share a non-empty Studio/Venue Name,
+// even transitively.
 function groupEntriesByLocation(entries) {
   const parent = entries.map((_, i) => i);
   function find(i) {
@@ -57,16 +64,18 @@ function groupEntriesByLocation(entries) {
     if (rootA !== rootB) parent[rootA] = rootB;
   }
 
-  const byLatLng = new Map();
+  const coords = entries.map((entry) => [parseFloat(entry.latitude), parseFloat(entry.longitude)]);
   const byVenue = new Map();
 
   entries.forEach((entry, i) => {
-    const lat = parseFloat(entry.latitude);
-    const lng = parseFloat(entry.longitude);
+    const [lat, lng] = coords[i];
     if (Number.isFinite(lat) && Number.isFinite(lng)) {
-      const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
-      if (byLatLng.has(key)) union(i, byLatLng.get(key));
-      else byLatLng.set(key, i);
+      for (let j = 0; j < i; j++) {
+        const [otherLat, otherLng] = coords[j];
+        if (Number.isFinite(otherLat) && Number.isFinite(otherLng) && haversineMiles(lat, lng, otherLat, otherLng) <= SAME_LOCATION_MILES) {
+          union(i, j);
+        }
+      }
     }
 
     const venueKey = (entry.studioVenueName || '').trim().toLowerCase();
@@ -99,7 +108,7 @@ function showGroupInfoWindow(marker, group) {
   const items = group
     .map((entry) => {
       const label = displayName(entry);
-      return `<li><button type="button" class="map-info__item" data-entry-id="${entry.id}">${escapeHtml(label)}</button></li>`;
+      return `<li><button type="button" class="map-info__item" data-entry-id="${entry.id}">${escapeHtml(label)}<span class="map-info__type">${escapeHtml(entry.groupType || '')}</span></button></li>`;
     })
     .join('');
 

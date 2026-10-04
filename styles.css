@@ -1070,6 +1070,17 @@ main {
   text-decoration: underline;
 }
 
+/* Which kind of stop it is (Gallery, Artist Group…), on its own line under
+   the name. inline-block keeps the hover underline off it. */
+.map-info__type {
+  display: inline-block;
+  width: 100%;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(37, 53, 81, 0.65);
+}
+
 /* ---------- My Day (plan) view ---------- */
 
 .plan-view {
