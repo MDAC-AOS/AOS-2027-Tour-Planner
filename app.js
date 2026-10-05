@@ -326,7 +326,9 @@ function listingMeta(artist) {
   const showsMedium = category === 'individual artist' || category === 'artist group: individual artist';
   return {
     showsVenueName,
-    memberNames: isArtistGroup ? (artist.groupMemberNames || []) : [],
+    // Galleries can be studio groups too (Gallery 209 is registered as a
+    // gallery but lists its member artists), so they show the list as well.
+    memberNames: isArtistGroup || category === 'gallery' || category === 'gallery-tier sponsor' ? (artist.groupMemberNames || []) : [],
     medium: showsMedium ? (artist.medium || '') : '',
   };
 }
@@ -396,8 +398,8 @@ function cardTemplate(artist) {
         </div>
         <h3 class="card__name" data-open-detail="${artist.id}">${escapeHtml(name)}</h3>
         ${artist.veteranLabel ? `<span class="status-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
-        ${memberNames.length ? `<p class="card__members"><strong>Artists:</strong> ${escapeHtml(memberNames.join(', '))}</p>` : ''}
         ${bio ? `<p class="card__bio">${escapeHtml(bio)}</p>` : ''}
+        ${memberNames.length ? `<p class="card__members"><strong>Artists:</strong> ${escapeHtml(memberNames.join(', '))}</p>` : ''}
         <button type="button" class="read-more-link" data-open-detail="${artist.id}">Read More →</button>
         <div class="card__footer">
           <span class="card__days">${escapeHtml(days)}</span>
