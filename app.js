@@ -1928,10 +1928,22 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker
       .register('sw.js')
       .then((registration) => {
-        setInterval(() => registration.update(), DATA_REFRESH_INTERVAL_MS);
+        // A desktop window that stays on screen never fires visibilitychange
+        // when the visitor clicks back into it from another app, so focus
+        // (and regaining signal) trigger a check too. Throttled so rapid
+        // focus changes don't hammer the server.
+        let lastUpdateCheck = 0;
+        const checkForUpdate = () => {
+          if (Date.now() - lastUpdateCheck < 30 * 1000) return;
+          lastUpdateCheck = Date.now();
+          registration.update().catch(() => {});
+        };
+        setInterval(checkForUpdate, DATA_REFRESH_INTERVAL_MS);
         document.addEventListener('visibilitychange', () => {
-          if (document.visibilityState === 'visible') registration.update();
+          if (document.visibilityState === 'visible') checkForUpdate();
         });
+        window.addEventListener('focus', checkForUpdate);
+        window.addEventListener('online', checkForUpdate);
       })
       .catch((err) => console.warn('Service worker registration failed:', err));
   });
