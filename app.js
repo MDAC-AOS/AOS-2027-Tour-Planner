@@ -447,6 +447,19 @@ function compareDirectory(a, b) {
   return byKey || displayName(a).localeCompare(displayName(b), undefined, { sensitivity: 'base' });
 }
 
+// Search matches a listing's own name or, for groups and studio galleries,
+// any member artist's name. The member field is free text, so entries that are
+// really a note or a link (Artists & Makers Studios points to a web page
+// there) are skipped — otherwise searching "here" or "https" would match them.
+function isSearchableMemberName(name) {
+  return name.length <= 40 && !/https?:|www\.|\//i.test(name);
+}
+
+function matchesSearchTerm(artist, searchTerm) {
+  if (displayName(artist).toLowerCase().includes(searchTerm)) return true;
+  return listingMeta(artist).memberNames.some((name) => isSearchableMemberName(name) && name.toLowerCase().includes(searchTerm));
+}
+
 function applyFilters() {
   const { groupType, county, medium, search } = state.filters;
   const searchTerm = search.trim().toLowerCase();
@@ -454,7 +467,7 @@ function applyFilters() {
     const matchesGroupType = groupType.length === 0 || groupType.includes(artist.groupType);
     const matchesCounty = county.length === 0 || county.includes(artist.county);
     const matchesMedium = medium.length === 0 || artistMedia(artist).some((m) => medium.includes(m));
-    const matchesSearch = !searchTerm || displayName(artist).toLowerCase().includes(searchTerm);
+    const matchesSearch = !searchTerm || matchesSearchTerm(artist, searchTerm);
     return matchesGroupType && matchesCounty && matchesMedium && matchesSearch;
   }).sort(compareDirectory);
 }
