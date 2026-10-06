@@ -1631,7 +1631,7 @@ main {
   bottom: 0;
   z-index: 5;
   flex-shrink: 0;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  padding: 10px 24px calc(10px + env(safe-area-inset-bottom));
   background: rgba(250, 250, 250, 0.97);
   border-top: 1px solid #e5e5e5;
 }
@@ -1642,9 +1642,16 @@ main {
 
 .detail-nav__inner {
   display: flex;
-  gap: 10px;
-  max-width: 720px;
+  gap: 12px;
+  /* Same width as the page content above (720px body minus its 24px sides). */
+  max-width: 672px;
   margin: 0 auto;
+}
+
+@media (min-width: 640px) {
+  .detail-nav__inner {
+    gap: 28px;
+  }
 }
 
 .detail-nav__btn {
