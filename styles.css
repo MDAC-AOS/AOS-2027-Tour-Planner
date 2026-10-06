@@ -1648,9 +1648,16 @@ main {
   margin: 0 auto;
 }
 
+/* Wider screens: fixed-width buttons pushed to the two edges of the content
+   column, so there is a generous gap between them instead of two wide buttons
+   nearly touching. */
 @media (min-width: 640px) {
   .detail-nav__inner {
-    gap: 56px;
+    justify-content: space-between;
+  }
+
+  .detail-nav__inner .detail-nav__btn {
+    flex: 0 1 260px;
   }
 }
 
