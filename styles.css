@@ -1655,6 +1655,26 @@ main {
   text-decoration: underline;
 }
 
+/* Registrants' free-text answers: single line breaks they typed are kept
+   (HTML otherwise collapses them), and blank lines split the text into
+   separate paragraphs with room between them (see paragraphsHtml). */
+.keep-line-breaks,
+.detail-bio__para {
+  white-space: pre-line;
+}
+
+.detail-bio__para {
+  margin: 0;
+}
+
+.detail-bio__para + .detail-bio__para {
+  margin-top: 1em;
+}
+
+.detail-section .keep-line-breaks + .keep-line-breaks {
+  margin-top: 0.8em;
+}
+
 .detail-bio {
   font-size: 0.95rem;
   line-height: 1.6;

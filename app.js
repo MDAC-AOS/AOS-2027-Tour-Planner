@@ -283,6 +283,18 @@ function jsAttrString(value) {
   return escapeHtml(String(value).replace(/[\\']/g, '\\$&').replace(/\s+/g, ' '));
 }
 
+// Registrants' free text can have several paragraphs (blank lines between
+// them). Each becomes its own <p> so CSS can space them; single line breaks
+// within a paragraph are kept by `white-space: pre-line`.
+function paragraphsHtml(text, className, render = escapeHtml) {
+  return String(text || '')
+    .split(/\n\s*\n/)
+    .map((para) => para.trim())
+    .filter(Boolean)
+    .map((para) => `<p class="${className}">${render(para)}</p>`)
+    .join('');
+}
+
 // Turns any http(s):// or www. URL written inside plain bio text into a
 // real, tappable link. The sheet only ever gives us plain text here, never
 // HTML, so this builds the anchor itself rather than trusting the input —
@@ -1210,16 +1222,16 @@ function renderDetail() {
     </div>
     ${artist.veteranLabel ? `<span class="status-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
     <h2 class="detail-name">${escapeHtml(name)}</h2>
-    ${artist.artistBio ? `<p class="detail-bio">${linkifyText(artist.artistBio)}</p>` : ''}
+    ${artist.artistBio ? `<div class="detail-bio">${paragraphsHtml(artist.artistBio, 'detail-bio__para', linkifyText)}</div>` : ''}
     ${memberNames.length ? `<p class="card__members"><strong>Artists:</strong> ${linkifyText(memberNames.join(', '))}</p>` : ''}
     <div class="detail-section"><div class="detail-section__label">AOS Tour Days</div><p>${escapeHtml(artist.aosTourDays || 'Not provided')}</p></div>
     ${artist.studioAddress ? `<div class="detail-section"><div class="detail-section__label">Address</div><p>${escapeHtml(artist.studioAddress)}</p><a class="directions-btn" href="${escapeHtml(directionsUrl(artist.studioAddress))}" target="_blank" rel="noopener">Get Directions</a></div>` : ''}
-    ${artist.directionsNotes ? `<div class="detail-section"><div class="detail-section__label">Directions</div><p>${escapeHtml(artist.directionsNotes)}</p></div>` : ''}
+    ${artist.directionsNotes ? `<div class="detail-section"><div class="detail-section__label">Directions</div>${paragraphsHtml(artist.directionsNotes, 'keep-line-breaks')}</div>` : ''}
     <div class="detail-section"><div class="detail-section__label">Phone</div><p>${artist.phone ? `<a href="tel:${escapeHtml(artist.phone)}">${escapeHtml(artist.phone)}</a>` : 'Not provided'}</p></div>
     ${artist.website ? `<div class="detail-section"><div class="detail-section__label">Website</div><p>${websiteHref ? `<a href="${escapeHtml(websiteHref)}" target="_blank" rel="noopener">${escapeHtml(artist.website)}</a>` : escapeHtml(artist.website)}</p></div>` : ''}
     ${socialLinks.length ? `<div class="detail-section"><div class="detail-section__label">Social Media</div><div class="detail-social-links">${socialLinks.map((url) => `<a href="${escapeHtml(safeHref(url))}" target="_blank" rel="noopener" class="detail-social-link">${escapeHtml(socialPlatformLabel(url))} ↗</a>`).join('')}</div></div>` : ''}
     ${(artist.studioAddress || artist.website || socialLinks.length || bioHasLink) ? '<p class="detail-external-note">Website and directions open in a browser view — tap the X to come back. Social links may open their app instead — swipe up or use your app switcher.</p>' : ''}
-    ${artist.accessibilityNotes ? `<div class="detail-section"><div class="detail-section__label">Accessibility Options</div><p>${escapeHtml(artist.accessibilityNotes)}</p></div>` : ''}
+    ${artist.accessibilityNotes ? `<div class="detail-section"><div class="detail-section__label">Accessibility Options</div>${paragraphsHtml(artist.accessibilityNotes, 'keep-line-breaks')}</div>` : ''}
     ${photoGalleryHtml(imageUrls, name)}
     <button type="button" class="detail-add-btn ${inPlan ? 'detail-add-btn--active' : ''}" data-add-id="${artist.id}">${inPlan ? '✓ In My Day — remove' : 'Add to My Day'}</button>
   `;
@@ -1911,6 +1923,13 @@ async function init() {
   el.detailBody.addEventListener('click', handleDelegatedClick);
   setStatus(usingCachedArtists ? "You're offline — showing your last saved listings." : '');
   render();
+}
+
+// An installed desktop app's title bar reads "<app name> - <page title>", so
+// the page title's own "— Artist Open Studios Tour" showed the name twice.
+// Browser tabs keep the full title (it's what identifies the tab and shared links).
+if (isRunningStandalone()) {
+  document.title = 'Plan Your Day';
 }
 
 init();
