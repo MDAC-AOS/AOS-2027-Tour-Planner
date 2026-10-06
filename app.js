@@ -408,7 +408,7 @@ function cardTemplate(artist) {
   const days = artist.aosTourDays || 'Days not provided';
   const bio = bioExcerpt(artist.artistBio);
   const imageUrls = artist.imageUrls || [];
-  const { memberNames, medium } = listingMeta(artist);
+  const { medium } = listingMeta(artist);
   const inPlan = isInPlan(artist.id);
 
   const containClass = usesContainPhoto(artist.groupType) ? ' card__photo-wrap--contain' : '';
@@ -427,7 +427,6 @@ function cardTemplate(artist) {
         <h3 class="card__name" data-open-detail="${artist.id}">${escapeHtml(name)}</h3>
         ${artist.veteranLabel ? `<span class="status-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
         ${bio ? `<p class="card__bio">${escapeHtml(bio)}</p>` : ''}
-        ${memberNames.length ? `<p class="card__members"><strong>Artists:</strong> ${escapeHtml(memberNames.join(', '))}</p>` : ''}
         <button type="button" class="read-more-link" data-open-detail="${artist.id}">Read More →</button>
         <div class="card__footer">
           <span class="card__days">${escapeHtml(days)}</span>
