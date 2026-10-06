@@ -77,6 +77,11 @@ const el = {
   backToTopPlan: document.getElementById('back-to-top-plan'),
   backToTopDetail: document.getElementById('back-to-top-detail'),
   detailOverlay: document.getElementById('detail-overlay'),
+  detailNav: document.getElementById('detail-nav'),
+  detailPrev: document.getElementById('detail-prev'),
+  detailNext: document.getElementById('detail-next'),
+  detailPrevName: document.getElementById('detail-prev-name'),
+  detailNextName: document.getElementById('detail-next-name'),
   detailPhoto: document.getElementById('detail-photo'),
   detailBody: document.getElementById('detail-body'),
   detailBack: document.getElementById('detail-back'),
@@ -1193,6 +1198,52 @@ async function shareDetailLink(artist, button) {
   }, 1500);
 }
 
+// Previous/Next on the detail page walk the directory list as the visitor is
+// currently seeing it (same filters, search, and alphabetical order). A
+// listing that isn't in that list (opened from a shared link, say) has no
+// neighbors, so the buttons are hidden for it.
+function detailNeighbors() {
+  const list = applyFilters();
+  const index = list.findIndex((a) => a.id === state.detailId);
+  if (index === -1 || list.length < 2) return null;
+  return { prev: list[index - 1] || null, next: list[index + 1] || null };
+}
+
+function renderDetailNav() {
+  const neighbors = detailNeighbors();
+  el.detailNav.hidden = !neighbors;
+  if (!neighbors) return;
+  el.detailPrev.disabled = !neighbors.prev;
+  el.detailNext.disabled = !neighbors.next;
+  el.detailPrevName.textContent = neighbors.prev ? displayName(neighbors.prev) : '';
+  el.detailNextName.textContent = neighbors.next ? displayName(neighbors.next) : '';
+}
+
+function goToNeighbor(direction) {
+  const neighbors = detailNeighbors();
+  const target = neighbors && (direction === 'next' ? neighbors.next : neighbors.prev);
+  if (!target) return;
+  track('Browse Listing', { direction });
+  // A ?artist= link would otherwise reopen the first listing on reload.
+  clearArtistParamFromUrl();
+  openDetail(target.id);
+  el.detailOverlay.scrollTop = 0;
+}
+
+function wireDetailNav() {
+  el.detailPrev.addEventListener('click', () => goToNeighbor('prev'));
+  el.detailNext.addEventListener('click', () => goToNeighbor('next'));
+  // Arrow keys on desktop — but never while something else owns them: the
+  // photo lightbox, the day picker, a text field, or the photo strip.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (state.detailId === null || state.lightbox || state.pending !== null) return;
+    if (e.target.closest && e.target.closest('input, textarea, select, .gallery__track')) return;
+    goToNeighbor(e.key === 'ArrowRight' ? 'next' : 'prev');
+  });
+}
+
 function renderDetail() {
   const artist = state.detailId !== null ? findArtist(state.detailId) : null;
   el.detailOverlay.hidden = !artist;
@@ -1201,6 +1252,7 @@ function renderDetail() {
     el.detailPhoto.innerHTML = '';
     return;
   }
+  renderDetailNav();
 
   const name = displayName(artist);
   const imageUrls = artist.imageUrls || [];
@@ -1929,6 +1981,7 @@ async function init() {
   wirePicker();
   wireDetailBack();
   wireLightbox();
+  wireDetailNav();
   wireResponsiveBreakpoint();
   wireBackToTop(el.grid, el.backToTopDirectory);
   wireBackToTop(el.planView, el.backToTopPlan);
