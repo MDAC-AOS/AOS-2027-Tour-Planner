@@ -1642,7 +1642,7 @@ main {
 
 .detail-nav__inner {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   /* Same width as the page content above (720px body minus its 24px sides). */
   max-width: 672px;
   margin: 0 auto;
@@ -1650,7 +1650,7 @@ main {
 
 @media (min-width: 640px) {
   .detail-nav__inner {
-    gap: 28px;
+    gap: 56px;
   }
 }
 
