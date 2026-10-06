@@ -295,6 +295,22 @@ function paragraphsHtml(text, className, render = escapeHtml) {
     .join('');
 }
 
+// The sheet joins the accessibility checkboxes and the registrant's extra
+// note into one string with "; " ("Elevator, Ramp Available; Wheelchairs are
+// available."). This puts a blank line between them so they show as two
+// paragraphs. Only the first "; " is considered, and only when what comes
+// before it looks like a checkbox list (short comma-separated items), so a
+// semicolon inside a free-text note is left alone.
+function spaceAccessibilityNotes(text) {
+  const raw = String(text || '');
+  const at = raw.indexOf('; ');
+  if (at === -1) return raw;
+  const head = raw.slice(0, at);
+  const looksLikeOptions = head.split(',').every((item) => item.trim().length <= 60);
+  if (!looksLikeOptions) return raw;
+  return `${head}\n\n${raw.slice(at + 2)}`;
+}
+
 // Turns any http(s):// or www. URL written inside plain bio text into a
 // real, tappable link. The sheet only ever gives us plain text here, never
 // HTML, so this builds the anchor itself rather than trusting the input —
@@ -1211,7 +1227,7 @@ function renderDetail() {
   const socialLinks = (artist.socialLinks || []).filter((url) => safeHref(url));
   const websiteHref = safeHref(artist.website);
   const hasUrl = (text) => /https?:\/\/|www\.[a-z0-9]/i.test(text || '');
-  const bioHasLink = hasUrl(artist.artistBio) || hasUrl(memberNames.join(', '));
+  const bioHasLink = hasUrl(artist.artistBio) || hasUrl(memberNames.join(', ')) || hasUrl(artist.directionsNotes) || hasUrl(artist.accessibilityNotes);
 
   el.detailBody.innerHTML = `
     <button type="button" class="link-btn detail-back-link" data-back-to-directory="1">← Back to Directory</button>
@@ -1226,12 +1242,12 @@ function renderDetail() {
     ${memberNames.length ? `<p class="card__members"><strong>Artists:</strong> ${linkifyText(memberNames.join(', '))}</p>` : ''}
     <div class="detail-section"><div class="detail-section__label">AOS Tour Days</div><p>${escapeHtml(artist.aosTourDays || 'Not provided')}</p></div>
     ${artist.studioAddress ? `<div class="detail-section"><div class="detail-section__label">Address</div><p>${escapeHtml(artist.studioAddress)}</p><a class="directions-btn" href="${escapeHtml(directionsUrl(artist.studioAddress))}" target="_blank" rel="noopener">Get Directions</a></div>` : ''}
-    ${artist.directionsNotes ? `<div class="detail-section"><div class="detail-section__label">Directions</div>${paragraphsHtml(artist.directionsNotes, 'keep-line-breaks')}</div>` : ''}
+    ${artist.directionsNotes ? `<div class="detail-section"><div class="detail-section__label">Directions</div>${paragraphsHtml(artist.directionsNotes, 'keep-line-breaks', linkifyText)}</div>` : ''}
     <div class="detail-section"><div class="detail-section__label">Phone</div><p>${artist.phone ? `<a href="tel:${escapeHtml(artist.phone)}">${escapeHtml(artist.phone)}</a>` : 'Not provided'}</p></div>
     ${artist.website ? `<div class="detail-section"><div class="detail-section__label">Website</div><p>${websiteHref ? `<a href="${escapeHtml(websiteHref)}" target="_blank" rel="noopener">${escapeHtml(artist.website)}</a>` : escapeHtml(artist.website)}</p></div>` : ''}
     ${socialLinks.length ? `<div class="detail-section"><div class="detail-section__label">Social Media</div><div class="detail-social-links">${socialLinks.map((url) => `<a href="${escapeHtml(safeHref(url))}" target="_blank" rel="noopener" class="detail-social-link">${escapeHtml(socialPlatformLabel(url))} ↗</a>`).join('')}</div></div>` : ''}
     ${(artist.studioAddress || artist.website || socialLinks.length || bioHasLink) ? '<p class="detail-external-note">Website and directions open in a browser view — tap the X to come back. Social links may open their app instead — swipe up or use your app switcher.</p>' : ''}
-    ${artist.accessibilityNotes ? `<div class="detail-section"><div class="detail-section__label">Accessibility Options</div>${paragraphsHtml(artist.accessibilityNotes, 'keep-line-breaks')}</div>` : ''}
+    ${artist.accessibilityNotes ? `<div class="detail-section"><div class="detail-section__label">Accessibility Options</div>${paragraphsHtml(spaceAccessibilityNotes(artist.accessibilityNotes), 'keep-line-breaks', linkifyText)}</div>` : ''}
     ${photoGalleryHtml(imageUrls, name)}
     <button type="button" class="detail-add-btn ${inPlan ? 'detail-add-btn--active' : ''}" data-add-id="${artist.id}">${inPlan ? '✓ In My Day — remove' : 'Add to My Day'}</button>
   `;
