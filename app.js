@@ -871,14 +871,13 @@ function moveStop(id, direction) {
 }
 
 function planStopRow(artist, index, prevArtist, day, total) {
-  const v = GROUP_VISUALS[artist.groupType] || GROUP_VISUALS.Artist;
   const otherDay = day === 'Saturday' ? 'Sunday' : 'Saturday';
   const note = distanceNote(prevArtist, artist);
   return `
     <div class="plan-stop">
       <div class="plan-stop__order">
         <button type="button" class="reorder-btn" data-move-id="${artist.id}" data-move-dir="-1" aria-label="Move up" ${index === 0 ? 'disabled' : ''}>▲</button>
-        <div class="plan-stop__num" style="background:${v.color}; color:${v.ink}; border-radius:${v.radius};">${index + 1}</div>
+        <div class="plan-stop__num">${index + 1}</div>
         <button type="button" class="reorder-btn" data-move-id="${artist.id}" data-move-dir="1" aria-label="Move down" ${index === total - 1 ? 'disabled' : ''}>▼</button>
       </div>
       <div class="plan-stop__body">

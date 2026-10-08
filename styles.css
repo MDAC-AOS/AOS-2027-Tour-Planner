@@ -1180,14 +1180,13 @@ main {
 
 .plan-stop__num {
   flex-shrink: 0;
-  width: 30px;
-  height: 30px;
+  width: 28px;
   font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-weight: 400;
+  font-size: 1.1rem;
+  line-height: 1.2;
+  color: var(--color-twilight-indigo);
+  text-align: center;
 }
 
 .reorder-btn {
