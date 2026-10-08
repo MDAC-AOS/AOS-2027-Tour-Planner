@@ -1295,7 +1295,6 @@ main {
   border-radius: 14px;
   background: var(--color-bright-gold);
   color: var(--color-twilight-indigo);
-  box-shadow: 0 3px 0 rgba(37, 53, 81, 0.25);
 }
 
 .plan-route__note {
