@@ -259,13 +259,23 @@ function directionsUrl(address) {
 // Google Maps links take one destination plus up to 9 stops along the way.
 const MAX_ROUTE_STOPS = 10;
 
-// Where a stop is, for a route link: exact coordinates when the sheet has them
-// (no geocoding guesswork), otherwise its street address.
+// Where a stop is, for a route link. Google Maps can't show custom labels, but
+// it labels a stop by whatever text it's given: raw coordinates came out as
+// "Pin 1", "Pin 2". So a stop is described by its street address, with the
+// venue's name in front for galleries, museums, and groups (which Maps often
+// recognizes as a place); an individual artist's name would only risk a
+// wrong match, so artists are the address alone. Coordinates are the fallback
+// when there's no address.
 function stopRoutePoint(stop) {
+  const address = (stop.studioAddress || '').trim();
+  if (address) {
+    const venue = (stop.studioVenueName || '').trim();
+    const namedVenue = ['Gallery', 'Museum', 'Artist Group'].includes(stop.groupType) && venue;
+    return namedVenue ? `${venue}, ${address}` : address;
+  }
   const lat = parseFloat(stop.latitude);
   const lng = parseFloat(stop.longitude);
-  if (Number.isFinite(lat) && Number.isFinite(lng)) return `${lat},${lng}`;
-  return (stop.studioAddress || '').trim();
+  return Number.isFinite(lat) && Number.isFinite(lng) ? `${lat},${lng}` : '';
 }
 
 // One Google Maps route through the day's stops in the visitor's chosen order,

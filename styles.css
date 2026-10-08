@@ -1116,6 +1116,7 @@ main {
 
 .plan-header__share {
   flex-shrink: 0;
+  margin-left: auto; /* right-align, opposite the day title and stop count */
   width: 44px;
   height: 44px;
   border-radius: 50%;
