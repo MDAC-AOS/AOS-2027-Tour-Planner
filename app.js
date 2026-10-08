@@ -88,6 +88,9 @@ const el = {
   detailPhoto: document.getElementById('detail-photo'),
   detailBody: document.getElementById('detail-body'),
   detailBack: document.getElementById('detail-back'),
+  detailTopbar: document.getElementById('detail-topbar'),
+  detailShare: document.getElementById('detail-share-btn'),
+  detailAddTop: document.getElementById('detail-add-top'),
   installBanner: document.getElementById('install-banner'),
   installBannerText: document.getElementById('install-banner-text'),
   installBannerAction: document.getElementById('install-banner-action'),
@@ -1293,6 +1296,33 @@ function wireDetailNav() {
   });
 }
 
+// Back / Share / Add to My Day float over the photo and stay pinned at the top
+// of the screen while the page scrolls, so the main action is never a long
+// scroll away. Once the photo has scrolled out from under them they get a
+// solid bar so they stay readable over the text.
+function renderDetailTopbar(inPlan) {
+  el.detailAddTop.textContent = inPlan ? '✓ In My Day' : '+ Add to My Day';
+  el.detailAddTop.classList.toggle('detail-topbar__add--active', inPlan);
+  el.detailAddTop.setAttribute('aria-label', inPlan ? 'In My Day — tap to remove' : 'Add to My Day');
+  updateDetailTopbarSolid();
+}
+
+function updateDetailTopbarSolid() {
+  const solid = el.detailOverlay.scrollTop > el.detailPhoto.offsetHeight - 64;
+  el.detailTopbar.classList.toggle('detail-topbar--solid', solid);
+}
+
+function wireDetailTopbar() {
+  el.detailShare.addEventListener('click', (e) => {
+    const artist = state.detailId !== null ? findArtist(state.detailId) : null;
+    if (artist) shareDetailLink(artist, e.currentTarget);
+  });
+  el.detailAddTop.addEventListener('click', () => {
+    if (state.detailId !== null) requestAdd(state.detailId);
+  });
+  el.detailOverlay.addEventListener('scroll', updateDetailTopbarSolid, { passive: true });
+}
+
 function renderDetail() {
   const artist = state.detailId !== null ? findArtist(state.detailId) : null;
   el.detailOverlay.hidden = !artist;
@@ -1311,18 +1341,8 @@ function renderDetail() {
   el.detailPhoto.classList.toggle('detail-overlay__photo--contain', usesContainPhoto(artist.groupType));
   el.detailPhoto.innerHTML = `
     ${photoMarkup(imageUrls.slice(0, 1), name)}
-    <button type="button" class="detail-overlay__back" id="detail-back-inner" aria-label="Back">←</button>
-    <button type="button" class="detail-overlay__share" id="detail-share-btn" title="Share this listing" aria-label="Share this listing">
-      <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
-        <circle cx="15" cy="4.5" r="2.6" fill="#253551"></circle>
-        <circle cx="15" cy="15.5" r="2.6" fill="#253551"></circle>
-        <circle cx="5" cy="10" r="2.6" fill="#253551"></circle>
-        <path d="M7.3 8.8 L12.7 5.7 M7.3 11.2 L12.7 14.3" stroke="#253551" stroke-width="1.6" stroke-linecap="round"></path>
-      </svg>
-    </button>
   `;
-  document.getElementById('detail-back-inner').addEventListener('click', closeDetail);
-  document.getElementById('detail-share-btn').addEventListener('click', (e) => shareDetailLink(artist, e.currentTarget));
+  renderDetailTopbar(inPlan);
 
   const socialLinks = (artist.socialLinks || []).filter((url) => safeHref(url));
   const websiteHref = safeHref(artist.website);
@@ -1349,7 +1369,6 @@ function renderDetail() {
     ${(artist.studioAddress || artist.website || socialLinks.length || bioHasLink) ? '<p class="detail-external-note">Website and directions open in a browser view — tap the X to come back. Social links may open their app instead — swipe up or use your app switcher.</p>' : ''}
     ${artist.accessibilityNotes ? `<div class="detail-section"><div class="detail-section__label">Accessibility Options</div>${paragraphsHtml(spaceAccessibilityNotes(artist.accessibilityNotes), 'keep-line-breaks', linkifyText)}</div>` : ''}
     ${photoGalleryHtml(imageUrls, name)}
-    <button type="button" class="detail-add-btn ${inPlan ? 'detail-add-btn--active' : ''}" data-add-id="${artist.id}">${inPlan ? '✓ In My Day — remove' : 'Add to My Day'}</button>
   `;
 }
 
@@ -2037,6 +2056,7 @@ async function init() {
   wireDetailBack();
   wireLightbox();
   wireDetailNav();
+  wireDetailTopbar();
   wirePlanRoute();
   wireResponsiveBreakpoint();
   wireBackToTop(el.grid, el.backToTopDirectory);

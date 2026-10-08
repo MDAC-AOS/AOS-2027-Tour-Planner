@@ -1624,17 +1624,47 @@ main {
   object-fit: contain;
 }
 
-.detail-overlay__back,
-.detail-overlay__share {
+/* Zero-height sticky anchor: the bar floats over the photo without taking
+   space, and stays at the top of the screen while the page scrolls. */
+.detail-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  height: 0;
+  flex-shrink: 0;
+}
+
+.detail-topbar__inner {
   position: absolute;
-  top: 16px;
-  z-index: 3;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  transition: background 0.15s, padding 0.15s;
+}
+
+.detail-topbar--solid .detail-topbar__inner {
+  padding: 8px 16px;
+  background: rgba(250, 250, 250, 0.97);
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.detail-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.detail-topbar__circle {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--color-bright-gold);
+  background: rgba(255, 255, 255, 0.94);
   color: var(--color-twilight-indigo);
-  border: none;
+  border: 1px solid rgba(37, 53, 81, 0.14);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1644,12 +1674,24 @@ main {
   box-shadow: 0 4px 12px rgba(37, 53, 81, 0.25);
 }
 
-.detail-overlay__back {
-  left: 16px;
+.detail-topbar__add {
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(37, 53, 81, 0.14);
+  border-radius: 999px;
+  background: var(--color-bright-gold);
+  color: var(--color-twilight-indigo);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 53, 81, 0.25);
 }
 
-.detail-overlay__share {
-  right: 16px;
+/* Added: the yellow goes away, since the action is done. */
+.detail-topbar__add--active {
+  background: rgba(255, 255, 255, 0.94);
 }
 
 .detail-overlay__body {
@@ -1964,27 +2006,6 @@ main {
 .directions-btn:hover {
   background: var(--color-twilight-indigo);
   color: var(--color-bright-gold);
-}
-
-.detail-add-btn {
-  display: block;
-  width: 100%;
-  margin-top: 22px;
-  text-align: center;
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 1.05rem;
-  padding: 15px;
-  border-radius: 16px;
-  cursor: pointer;
-  border: none;
-  box-shadow: 0 4px 0 rgba(37, 53, 81, 0.25);
-  background: var(--color-twilight-indigo);
-  color: var(--color-bright-gold);
-}
-
-.detail-add-btn--active {
-  border: 2px solid var(--color-bright-gold);
 }
 
 /* ---------- add-to-day picker modal ---------- */
