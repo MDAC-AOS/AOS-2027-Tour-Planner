@@ -1251,6 +1251,8 @@ main {
 }
 
 .swap-btn {
+  text-align: center;
+  text-decoration: none;
   font-family: var(--font-meta);
   letter-spacing: 0.06em;
   font-size: 0.65rem;
@@ -1272,6 +1274,39 @@ main {
   border: none;
   cursor: pointer;
   padding: 6px 2px;
+}
+
+.plan-route {
+  margin-bottom: 12px;
+}
+
+.plan-route[hidden] {
+  display: none;
+}
+
+.plan-route__btn {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 13px;
+  border-radius: 14px;
+  background: var(--color-bright-gold);
+  color: var(--color-twilight-indigo);
+  box-shadow: 0 3px 0 rgba(37, 53, 81, 0.25);
+}
+
+.plan-route__note {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: rgba(37, 53, 81, 0.75);
+}
+
+.plan-route__note[hidden] {
+  display: none;
 }
 
 .plan-empty {

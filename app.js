@@ -76,6 +76,9 @@ const el = {
   backToTopDirectory: document.getElementById('back-to-top-directory'),
   backToTopPlan: document.getElementById('back-to-top-plan'),
   backToTopDetail: document.getElementById('back-to-top-detail'),
+  planRoute: document.getElementById('plan-route'),
+  planRouteLink: document.getElementById('plan-route-link'),
+  planRouteNote: document.getElementById('plan-route-note'),
   detailOverlay: document.getElementById('detail-overlay'),
   detailNav: document.getElementById('detail-nav'),
   detailPrev: document.getElementById('detail-prev'),
@@ -248,6 +251,44 @@ function directionsUrl(address) {
   if (isIOS) return `https://maps.apple.com/?q=${query}`;
   if (isAndroid) return `geo:0,0?q=${query}`;
   return `https://www.google.com/maps/search/?api=1&query=${query}`;
+}
+
+// Google Maps links take one destination plus up to 9 stops along the way.
+const MAX_ROUTE_STOPS = 10;
+
+// Where a stop is, for a route link: exact coordinates when the sheet has them
+// (no geocoding guesswork), otherwise its street address.
+function stopRoutePoint(stop) {
+  const lat = parseFloat(stop.latitude);
+  const lng = parseFloat(stop.longitude);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) return `${lat},${lng}`;
+  return (stop.studioAddress || '').trim();
+}
+
+// One Google Maps route through the day's stops in the visitor's chosen order,
+// starting from wherever they are. On a phone with Google Maps installed the
+// link opens the app; otherwise it opens the same route in the browser.
+function dayRouteUrl(stops) {
+  const points = stops.map(stopRoutePoint).filter(Boolean).slice(0, MAX_ROUTE_STOPS);
+  if (!points.length) return null;
+  const params = new URLSearchParams({ api: '1', travelmode: 'driving', destination: points[points.length - 1] });
+  if (points.length > 1) params.set('waypoints', points.slice(0, -1).join('|'));
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
+function renderPlanRoute(day, stops) {
+  const url = dayRouteUrl(stops);
+  el.planRoute.hidden = !url;
+  if (!url) return;
+  el.planRouteLink.href = url;
+  el.planRouteLink.dataset.day = day;
+  el.planRouteLink.dataset.stops = String(Math.min(stops.length, MAX_ROUTE_STOPS));
+  el.planRouteLink.textContent = `Get directions for ${day}`;
+  const notes = [];
+  if (stops.length > MAX_ROUTE_STOPS) notes.push(`Google Maps can route ${MAX_ROUTE_STOPS} stops at a time, so this covers your first ${MAX_ROUTE_STOPS}.`);
+  if (!navigator.onLine) notes.push('Maps needs a signal — reconnect to open directions.');
+  el.planRouteNote.textContent = notes.join(' ');
+  el.planRouteNote.hidden = notes.length === 0;
 }
 
 function groupBadgeHtml(groupType, { inline = false } = {}) {
@@ -833,6 +874,7 @@ function planStopRow(artist, index, prevArtist, day, total) {
         ${note ? `<div class="plan-stop__drive">${escapeHtml(note)}</div>` : ''}
       </div>
       <div class="plan-stop__actions">
+        ${artist.studioAddress ? `<a class="swap-btn" href="${escapeHtml(directionsUrl(artist.studioAddress))}" target="_blank" rel="noopener" data-track-directions="my day stop">Directions</a>` : ''}
         <button type="button" class="swap-btn" data-swap-id="${artist.id}" data-swap-to="${otherDay}">Move to ${otherDay === 'Saturday' ? 'Sat' : 'Sun'}</button>
         <button type="button" class="remove-btn" data-remove-id="${artist.id}">Remove</button>
       </div>
@@ -1086,6 +1128,7 @@ function renderPlanView() {
   el.dayTabSun.classList.toggle('day-tabs__btn--active', day === 'Sunday');
 
   renderPlanMap(stops);
+  renderPlanRoute(day, stops);
 
   const shareBanner = state.incomingShare
     ? `
@@ -1230,6 +1273,12 @@ function goToNeighbor(direction) {
   el.detailOverlay.scrollTop = 0;
 }
 
+function wirePlanRoute() {
+  el.planRouteLink.addEventListener('click', () => {
+    track('Get Day Directions', { day: el.planRouteLink.dataset.day, stops: el.planRouteLink.dataset.stops });
+  });
+}
+
 function wireDetailNav() {
   el.detailPrev.addEventListener('click', () => goToNeighbor('prev'));
   el.detailNext.addEventListener('click', () => goToNeighbor('next'));
@@ -1292,7 +1341,7 @@ function renderDetail() {
     ${artist.artistBio ? `<div class="detail-bio">${paragraphsHtml(artist.artistBio, 'detail-bio__para', linkifyText)}</div>` : ''}
     ${memberNames.length ? `<p class="card__members"><strong>Artists:</strong> ${linkifyText(memberNames.join(', '))}</p>` : ''}
     <div class="detail-section"><div class="detail-section__label">AOS Tour Days</div><p>${escapeHtml(artist.aosTourDays || 'Not provided')}</p></div>
-    ${artist.studioAddress ? `<div class="detail-section"><div class="detail-section__label">Address</div><p>${escapeHtml(artist.studioAddress)}</p><a class="directions-btn" href="${escapeHtml(directionsUrl(artist.studioAddress))}" target="_blank" rel="noopener">Get Directions</a></div>` : ''}
+    ${artist.studioAddress ? `<div class="detail-section"><div class="detail-section__label">Address</div><p>${escapeHtml(artist.studioAddress)}</p><a class="directions-btn" href="${escapeHtml(directionsUrl(artist.studioAddress))}" target="_blank" rel="noopener" data-track-directions="listing">Get Directions</a></div>` : ''}
     ${artist.directionsNotes ? `<div class="detail-section"><div class="detail-section__label">Directions</div>${paragraphsHtml(artist.directionsNotes, 'keep-line-breaks', linkifyText)}</div>` : ''}
     <div class="detail-section"><div class="detail-section__label">Phone</div><p>${artist.phone ? `<a href="tel:${escapeHtml(artist.phone)}">${escapeHtml(artist.phone)}</a>` : 'Not provided'}</p></div>
     ${artist.website ? `<div class="detail-section"><div class="detail-section__label">Website</div><p>${websiteHref ? `<a href="${escapeHtml(websiteHref)}" target="_blank" rel="noopener">${escapeHtml(artist.website)}</a>` : escapeHtml(artist.website)}</p></div>` : ''}
@@ -1719,6 +1768,12 @@ function gallerySlideStep(gallery) {
 }
 
 function handleDelegatedClick(e) {
+  // Counts directions taps; the link itself still opens normally.
+  const directionsLink = e.target.closest('[data-track-directions]');
+  if (directionsLink) {
+    track('Get Directions', { from: directionsLink.dataset.trackDirections });
+    return;
+  }
   const arrow = e.target.closest('.gallery__arrow');
   if (arrow) {
     const gallery = arrow.closest('.gallery');
@@ -1982,6 +2037,7 @@ async function init() {
   wireDetailBack();
   wireLightbox();
   wireDetailNav();
+  wirePlanRoute();
   wireResponsiveBreakpoint();
   wireBackToTop(el.grid, el.backToTopDirectory);
   wireBackToTop(el.planView, el.backToTopPlan);
