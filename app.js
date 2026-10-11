@@ -1921,7 +1921,7 @@ function readIncomingShare() {
   return { day: day === 'Sunday' ? 'Sunday' : 'Saturday', ids };
 }
 
-const ARTISTS_CACHE_KEY = 'aosLastArtistsCacheV1';
+const ARTISTS_CACHE_KEY = 'aosLastArtistsCacheV2';
 
 // A visitor reopening the app (or reloading) with no signal would otherwise
 // see nothing — the directory data is deliberately never cached by the
@@ -2008,23 +2008,30 @@ async function init() {
   window.addEventListener('offline', renderConnection);
   wireInstallPrompt();
 
-  let usingCachedArtists = false;
-  try {
-    state.all = await loadArtists();
-    assignArtistIds(state.all);
-    cacheArtists(state.all);
-  } catch (err) {
-    console.error(err);
-    const cached = loadCachedArtists();
-    if (!cached || !cached.length) {
+  // Returning visitors: show the listings saved from their last visit right
+  // away, then refresh from the sheet in the background. Google Sheets is
+  // usually quick but now and then takes several seconds, and the screen
+  // shouldn't wait on that. First-time visitors have nothing saved, so they
+  // wait for the sheet as before.
+  const savedArtists = loadCachedArtists();
+  const showSavedFirst = Boolean(savedArtists && savedArtists.length);
+  if (showSavedFirst) {
+    state.all = savedArtists;
+  } else {
+    try {
+      state.all = await loadArtists();
+      assignArtistIds(state.all);
+      cacheArtists(state.all);
+    } catch (err) {
+      console.error(err);
       setStatus("Can't load the tour listings right now — no internet connection. Try again once you have signal.", true);
       return;
     }
-    state.all = cached;
-    usingCachedArtists = true;
   }
+  const showingOfflineCopy = showSavedFirst && !navigator.onLine;
 
-  lastArtistFetchAt = Date.now();
+  // 0 for the saved-first path so the next refresh trigger isn't skipped.
+  lastArtistFetchAt = showSavedFirst ? 0 : Date.now();
   wireDataAutoRefresh();
 
   const artistId = readArtistIdFromUrl();
@@ -2074,8 +2081,19 @@ async function init() {
   el.grid.addEventListener('click', handleDelegatedClick);
   el.planStops.addEventListener('click', handleDelegatedClick);
   el.detailBody.addEventListener('click', handleDelegatedClick);
-  setStatus(usingCachedArtists ? "You're offline — showing your last saved listings." : '');
+  setStatus(showingOfflineCopy ? "You're offline — showing your last saved listings." : '');
   render();
+
+  if (showSavedFirst && navigator.onLine) {
+    refreshArtistData().then(() => {
+      // A shared listing link can point at a listing newer than the saved copy.
+      if (artistId && state.detailId === null && findArtist(artistId)) {
+        track('Opened Shared Link', { kind: 'listing' });
+        state.detailId = artistId;
+        render();
+      }
+    });
+  }
 }
 
 // An installed desktop app's title bar reads "<app name> - <page title>", so
