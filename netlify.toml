@@ -5,3 +5,11 @@
 [build]
   command = "printf \"const CONFIG = {\\n  SHEET_ID: '%s',\\n  SHEET_GID: '%s',\\n  GOOGLE_MAPS_API_KEY: '%s',\\n};\\n\" \"$SHEET_ID\" \"$SHEET_GID\" \"$GOOGLE_MAPS_API_KEY\" > config.js"
   publish = "."
+
+# Short listing addresses printed on QR signs (directory.../jen-sterling) open
+# the app, which looks the listing up. Real files (sw.js, styles.css, ...) are
+# served first, so this only catches single-segment paths that aren't files.
+[[redirects]]
+  from = "/:slug"
+  to = "/index.html"
+  status = 200

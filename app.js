@@ -1905,10 +1905,50 @@ function wireGalleryScrollSync(root) {
   });
 }
 
-// Lets a registrant be sent a direct link straight to their own listing
-// (e.g. after they submit) — https://.../?artist=<their-id>.
-function readArtistIdFromUrl() {
-  return new URLSearchParams(window.location.search).get('artist');
+// Direct links to a listing:
+//  - https://.../?artist=<id>          (shared listing links, registrant links)
+//  - https://.../<name>                (the short address printed on QR signs,
+//                                       e.g. /jen-sterling)
+// The short address is a listing's name-only slug, or its full id when two
+// listings would share a name. A path link — or any link carrying src=qr —
+// counts as a scan of that listing's sign.
+function shortListingSlug(artist) {
+  return slugify(displayName(artist));
+}
+
+function findArtistBySlug(slug) {
+  if (!slug) return null;
+  const byId = state.all.find((a) => a.id === slug);
+  if (byId) return byId;
+  const matches = state.all.filter((a) => shortListingSlug(a) === slug);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function readLinkedListing() {
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = params.get('artist');
+  let pathSlug = null;
+  const path = window.location.pathname.replace(/^\/+|\/+$/g, '');
+  // One segment, no dot: not a file such as index.html or sw.js.
+  if (path && !path.includes('/') && !path.includes('.')) {
+    try {
+      pathSlug = decodeURIComponent(path).toLowerCase();
+    } catch (err) {
+      pathSlug = null;
+    }
+  }
+  return {
+    slug: fromQuery || pathSlug,
+    fromPath: !fromQuery && Boolean(pathSlug),
+    isScan: params.get('src') === 'qr' || (!fromQuery && Boolean(pathSlug)),
+  };
+}
+
+// Counts the visit as a sign scan when it came from a QR address, otherwise
+// as an opened shared link.
+function trackLinkedVisit(linked, artist) {
+  if (linked.isScan) track('QR Scan', { name: displayName(artist), type: artist.groupType });
+  else track('Opened Shared Link', { kind: 'listing' });
 }
 
 function readIncomingShare() {
@@ -2034,17 +2074,19 @@ async function init() {
   lastArtistFetchAt = showSavedFirst ? 0 : Date.now();
   wireDataAutoRefresh();
 
-  const artistId = readArtistIdFromUrl();
-  if (artistId && findArtist(artistId)) {
-    state.detailId = artistId;
-  }
+  const linked = readLinkedListing();
+  const linkedArtist = findArtistBySlug(linked.slug);
+  if (linkedArtist) state.detailId = linkedArtist.id;
+  // Back to a plain address so a reload isn't counted as another scan and
+  // anything shared from here is a clean link.
+  if (linked.fromPath) window.history.replaceState({}, '', '/');
 
   const incoming = readIncomingShare();
   // Opening someone else's shared link is the clearest sign sharing spreads
   // the tour to new people, so it gets its own count.
   track('pageview');
   if (incoming) track('Opened Shared Link', { kind: 'my day' });
-  else if (state.detailId !== null) track('Opened Shared Link', { kind: 'listing' });
+  else if (linkedArtist) trackLinkedVisit(linked, linkedArtist);
   flushAnalyticsQueue();
   if (incoming) {
     state.incomingShare = incoming;
@@ -2087,9 +2129,10 @@ async function init() {
   if (showSavedFirst && navigator.onLine) {
     refreshArtistData().then(() => {
       // A shared listing link can point at a listing newer than the saved copy.
-      if (artistId && state.detailId === null && findArtist(artistId)) {
-        track('Opened Shared Link', { kind: 'listing' });
-        state.detailId = artistId;
+      const lateArtist = state.detailId === null && !linkedArtist ? findArtistBySlug(linked.slug) : null;
+      if (lateArtist) {
+        trackLinkedVisit(linked, lateArtist);
+        state.detailId = lateArtist.id;
         render();
       }
     });

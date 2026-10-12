@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aos-tour-shell-v51';
+const CACHE_NAME = 'aos-tour-shell-v52';
 const APP_SHELL = [
   './',
   './index.html',
@@ -44,7 +44,15 @@ self.addEventListener('fetch', (event) => {
   // ignoreSearch: shared links (?artist=…, ?shareDay=…&stops=…) are the same
   // page as "/" — the app reads the query itself — so they should match the
   // cached shell and open offline instead of failing as an uncached URL.
+  // A short listing address printed on a QR sign (/jen-sterling) is the same
+  // app page as "/". Serve the cached page for it too, so a scan works with
+  // weak or no signal instead of waiting on (or failing at) the network.
+  const isListingAddress =
+    event.request.mode === 'navigate' &&
+    url.origin === self.location.origin &&
+    /^\/[^/.]+\/?$/.test(url.pathname);
+  const request = isListingAddress ? './index.html' : event.request;
   event.respondWith(
-    caches.match(event.request, { ignoreSearch: true }).then((cached) => cached || fetch(event.request))
+    caches.match(request, { ignoreSearch: true }).then((cached) => cached || fetch(event.request))
   );
 });

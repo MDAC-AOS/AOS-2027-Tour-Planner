@@ -7,3 +7,7 @@ config.js
 # Bundled Claude Design export used only to extract the original mockup —
 # not part of the app, safe to keep out of the repo.
 Plan Your Day (standalone).html
+
+# QR sign samples and generator output — local working files, not part of the app
+qr-samples/
+qr-signs/
