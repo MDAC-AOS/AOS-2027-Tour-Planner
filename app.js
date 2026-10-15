@@ -14,11 +14,12 @@ const state = {
   railView: 'map',
   // All three support picking more than one value at once; an empty array
   // means "no filter applied" (same as the old 'all' sentinel).
-  filters: { groupType: [], county: [], medium: [], search: '' },
-  // 'name' = A–Z by last name (the default); 'newest' = most recently
-  // registered first. Not a filter, so Reset puts it back but it never
-  // narrows the list.
-  sort: 'name',
+  // Narrow layout only: whether the Filters panel under the search box is
+  // expanded (collapsed by default so listings start near the top).
+  filtersOpen: false,
+  // `day` is 'all', 'Saturday' or 'Sunday' (a listing open both days matches
+  // either); `newOnly` limits the list to first-year participants.
+  filters: { groupType: [], county: [], medium: [], search: '', day: 'all', newOnly: false },
   // Which mobile filter dropdown (if any) is currently open — 'county',
   // 'medium', or null. A single value instead of two independent booleans
   // so opening one always closes the other; see filterMultiSelect() below.
@@ -49,8 +50,13 @@ const el = {
   resetFilters: document.getElementById('reset-filters'),
   searchInput: document.getElementById('search-input'),
   searchInputSide: document.getElementById('search-input-side'),
-  chipsSort: document.getElementById('chips-sort'),
-  chipsSortSide: document.getElementById('chips-sort-side'),
+  filtersToggle: document.getElementById('filters-toggle'),
+  filtersToggleLabel: document.getElementById('filters-toggle-label'),
+  filtersPanel: document.getElementById('filters-panel'),
+  chipsDay: document.getElementById('chips-day'),
+  chipsDaySide: document.getElementById('chips-day-side'),
+  chipsNew: document.getElementById('chips-new'),
+  chipsNewSide: document.getElementById('chips-new-side'),
   chipsGroup: document.getElementById('chips-group'),
   chipsGroupWrap: document.getElementById('chips-group-wrap'),
   chipsCounty: document.getElementById('chips-county'),
@@ -552,24 +558,29 @@ function matchesSearchTerm(artist, searchTerm) {
   return listingMeta(artist).memberNames.some((name) => isSearchableMemberName(name) && name.toLowerCase().includes(searchTerm));
 }
 
+// First time on the tour, going by the registration form's participation
+// count (the same field behind the "1st Year" ribbon).
+function isFirstYear(artist) {
+  return parseInt(artist.tourParticipationCount, 10) === 1;
+}
+
 function applyFilters() {
-  const { groupType, county, medium, search } = state.filters;
+  const { groupType, county, medium, search, day, newOnly } = state.filters;
   const searchTerm = search.trim().toLowerCase();
-  const matched = state.all.filter((artist) => {
+  return state.all.filter((artist) => {
     const matchesGroupType = groupType.length === 0 || groupType.includes(artist.groupType);
     const matchesCounty = county.length === 0 || county.includes(artist.county);
     const matchesMedium = medium.length === 0 || artistMedia(artist).some((m) => medium.includes(m));
     const matchesSearch = !searchTerm || matchesSearchTerm(artist, searchTerm);
-    return matchesGroupType && matchesCounty && matchesMedium && matchesSearch;
-  });
-  // state.all is in sheet order, and registrations are added to the bottom
-  // of the sheet, so the reverse of it is newest-first. This relies on the
-  // source sheet never being re-sorted.
-  return state.sort === 'newest' ? matched.reverse() : matched.sort(compareDirectory);
+    const matchesDay = day === 'all' || (artist.aosTourDays || '').toLowerCase().includes(day.toLowerCase());
+    const matchesNew = !newOnly || isFirstYear(artist);
+    return matchesGroupType && matchesCounty && matchesMedium && matchesSearch && matchesDay && matchesNew;
+  }).sort(compareDirectory);
 }
 
-// Sort picker: exactly one option is always active. Shares the chip look
-// with the Group Type filters (`.chip` narrow, `.chip-side` sidebar).
+// Day and New-to-the-Tour pickers: one option is active at a time (or none,
+// for the lone toggle). Shares the chip look with the Group Type filters
+// (`.chip` narrow, `.chip-side` sidebar).
 function chipSingle(container, options, activeValue, onPick, itemClass) {
   container.innerHTML = options
     .map((opt) => `<button type="button" class="${itemClass} ${opt.value === activeValue ? `${itemClass}--active` : ''}" data-value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</button>`)
@@ -764,11 +775,22 @@ function renderChips() {
     render();
   };
 
-  const sortOptions = [{ value: 'name', label: 'A–Z' }, { value: 'newest', label: 'Newest first' }];
-  const pickSort = (value) => {
-    if (state.sort === value) return;
-    state.sort = value;
-    track('Use Filter', { filter: 'sort' });
+  const dayOptions = [
+    { value: 'all', label: 'All days' },
+    { value: 'Saturday', label: 'Saturday' },
+    { value: 'Sunday', label: 'Sunday' },
+  ];
+  const pickDay = (value) => {
+    if (state.filters.day === value) return;
+    state.filters.day = value;
+    if (value !== 'all') track('Use Filter', { filter: 'day' });
+    renderChips();
+    render();
+  };
+  const newOptions = [{ value: 'new', label: 'First-year participants' }];
+  const toggleNew = () => {
+    state.filters.newOnly = !state.filters.newOnly;
+    if (state.filters.newOnly) track('Use Filter', { filter: 'new to the tour' });
     renderChips();
     render();
   };
@@ -784,8 +806,11 @@ function renderChips() {
   const countyOpen = state.openFilterPanel === 'county';
   const mediumOpen = state.openFilterPanel === 'medium';
 
-  chipSingle(el.chipsSort, sortOptions, state.sort, pickSort, 'chip');
-  chipSingle(el.chipsSortSide, sortOptions, state.sort, pickSort, 'chip-side');
+  chipSingle(el.chipsDay, dayOptions, state.filters.day, pickDay, 'chip');
+  chipSingle(el.chipsDaySide, dayOptions, state.filters.day, pickDay, 'chip-side');
+  const newActive = state.filters.newOnly ? 'new' : null;
+  chipSingle(el.chipsNew, newOptions, newActive, toggleNew, 'chip');
+  chipSingle(el.chipsNewSide, newOptions, newActive, toggleNew, 'chip-side');
   chipRowMulti(el.chipsGroup, groupOptions, state.filters.groupType, toggleGroupType);
   updateChipRowFade();
   filterMultiSelect(el.chipsCounty, countyOptions, state.filters.county, toggleCounty, countyOpen, setCountyOpen);
@@ -794,6 +819,34 @@ function renderChips() {
   chipColMulti(el.chipsGroupSide, groupOptions, state.filters.groupType, toggleGroupType, { withDots: true });
   filterMultiSelect(el.chipsCountySide, countyOptions, state.filters.county, toggleCounty, countyOpen, setCountyOpen);
   filterMultiSelect(el.chipsMediumSide, mediumOptions, state.filters.medium, toggleMedium, mediumOpen, setMediumOpen);
+  renderFiltersToggle();
+}
+
+// Search is always visible, so it isn't counted; this is everything inside
+// the collapsible panel.
+function activeFilterCount() {
+  const { groupType, county, medium, day, newOnly } = state.filters;
+  return groupType.length + county.length + medium.length + (day !== 'all' ? 1 : 0) + (newOnly ? 1 : 0);
+}
+
+function renderFiltersToggle() {
+  const count = activeFilterCount();
+  el.filtersToggleLabel.textContent = count ? `Filters (${count})` : 'Filters';
+  el.filtersToggle.classList.toggle('filters-toggle--active', count > 0);
+  el.filtersToggle.classList.toggle('filters-toggle--open', state.filtersOpen);
+  el.filtersToggle.setAttribute('aria-expanded', state.filtersOpen ? 'true' : 'false');
+  el.filtersPanel.hidden = !state.filtersOpen;
+}
+
+function wireFiltersToggle() {
+  el.filtersToggle.addEventListener('click', () => {
+    state.filtersOpen = !state.filtersOpen;
+    // Closing the panel also closes any open County/Medium dropdown inside it.
+    if (!state.filtersOpen) state.openFilterPanel = null;
+    renderChips();
+    // The Group Type row's scroll fade can't be measured while hidden.
+    updateChipRowFade();
+  });
 }
 
 // ---------- list view ----------
@@ -1643,8 +1696,7 @@ function wireSearchInput(inputEl, otherInputEl) {
 
 function wireResetFilters() {
   const reset = () => {
-    state.filters = { groupType: [], county: [], medium: [], search: '' };
-    state.sort = 'name';
+    state.filters = { groupType: [], county: [], medium: [], search: '', day: 'all', newOnly: false };
     state.openFilterPanel = null;
     el.searchInput.value = '';
     el.searchInputSide.value = '';
@@ -2139,6 +2191,7 @@ async function init() {
   wireDayTabs();
   wireShareButton();
   wireResetFilters();
+  wireFiltersToggle();
   wireFilterMultiSelectClose();
   wireChipRowFade();
   wireSearchInput(el.searchInput, el.searchInputSide);

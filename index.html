@@ -62,8 +62,8 @@
         <input type="search" class="search-input" id="search-input-side" placeholder="Artist, group, gallery, museum…">
       </div>
       <div class="chip-filters__group">
-        <div class="chip-filters__label">Sort</div>
-        <div class="chip-col" id="chips-sort-side"></div>
+        <div class="chip-filters__label">Day</div>
+        <div class="chip-col" id="chips-day-side"></div>
       </div>
       <div class="chip-filters__group">
         <div class="chip-filters__label">Group Type</div>
@@ -77,6 +77,10 @@
         <div class="chip-filters__label">Medium</div>
         <div class="filter-multiselect" id="chips-medium-side"></div>
       </div>
+      <div class="chip-filters__group">
+        <div class="chip-filters__label">New to the Tour</div>
+        <div class="chip-col" id="chips-new-side"></div>
+      </div>
       <div class="sidebar__note">Your plan is saved on this device and works without signal.</div>
       <p class="privacy-note">We count anonymous app usage — no names or personal details — to show grant funders that the tour makes a difference.</p>
     </aside>
@@ -86,23 +90,32 @@
         <div class="chip-filters__label">Search by Name</div>
         <input type="search" class="search-input" id="search-input" placeholder="Artist, group, gallery, museum…">
       </div>
-      <div class="chip-filters__group">
-        <div class="chip-filters__label">Sort</div>
-        <div class="chip-row" id="chips-sort"></div>
-      </div>
-      <div class="chip-filters__group">
-        <div class="chip-filters__label">Group Type</div>
-        <div class="chip-row-wrap" id="chips-group-wrap">
-          <div class="chip-row" id="chips-group"></div>
+      <button type="button" class="filters-toggle" id="filters-toggle" aria-expanded="false" aria-controls="filters-panel">
+        <span id="filters-toggle-label">Filters</span>
+      </button>
+      <div class="chip-filters__panel" id="filters-panel" hidden>
+        <div class="chip-filters__group">
+          <div class="chip-filters__label">Day</div>
+          <div class="chip-row" id="chips-day"></div>
         </div>
-      </div>
-      <div class="chip-filters__group">
-        <div class="chip-filters__label">County</div>
-        <div class="filter-multiselect" id="chips-county"></div>
-      </div>
-      <div class="chip-filters__group">
-        <div class="chip-filters__label">Medium</div>
-        <div class="filter-multiselect" id="chips-medium"></div>
+        <div class="chip-filters__group">
+          <div class="chip-filters__label">Group Type</div>
+          <div class="chip-row-wrap" id="chips-group-wrap">
+            <div class="chip-row" id="chips-group"></div>
+          </div>
+        </div>
+        <div class="chip-filters__group">
+          <div class="chip-filters__label">County</div>
+          <div class="filter-multiselect" id="chips-county"></div>
+        </div>
+        <div class="chip-filters__group">
+          <div class="chip-filters__label">Medium</div>
+          <div class="filter-multiselect" id="chips-medium"></div>
+        </div>
+        <div class="chip-filters__group">
+          <div class="chip-filters__label">New to the Tour</div>
+          <div class="chip-row" id="chips-new"></div>
+        </div>
       </div>
       <div class="chip-filters__meta">
         <span id="result-count" aria-live="polite"></span>

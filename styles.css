@@ -434,6 +434,47 @@ main {
   margin-top: 12px;
 }
 
+/* Narrow layout: Day / Group Type / County / Medium / New to the Tour sit
+   behind this button; search stays visible above it. */
+.filters-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  min-height: 44px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 9px 13px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(37, 53, 81, 0.25);
+  background: #ffffff;
+  color: var(--color-twilight-indigo);
+  cursor: pointer;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.filters-toggle::after {
+  content: '▾';
+  color: rgba(37, 53, 81, 0.5);
+  flex-shrink: 0;
+}
+
+.filters-toggle--open::after {
+  content: '▴';
+}
+
+.filters-toggle--active {
+  border-color: var(--color-twilight-indigo);
+}
+
+.chip-filters__panel {
+  margin-top: 12px;
+}
+
 .search-input {
   width: 100%;
   font-family: var(--font-body);
