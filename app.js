@@ -14,6 +14,9 @@ const state = {
   railView: 'map',
   // All three support picking more than one value at once; an empty array
   // means "no filter applied" (same as the old 'all' sentinel).
+  // Wide layout sidebar: which filter sections are expanded. Group Type is
+  // the tall one, but with Day it's what most people reach for first.
+  sidebarSections: { day: true, group: true, county: false, medium: false, new: false },
   // Narrow layout only: whether the Filters panel under the search box is
   // expanded (collapsed by default so listings start near the top).
   filtersOpen: false,
@@ -820,6 +823,38 @@ function renderChips() {
   filterMultiSelect(el.chipsCountySide, countyOptions, state.filters.county, toggleCounty, countyOpen, setCountyOpen);
   filterMultiSelect(el.chipsMediumSide, mediumOptions, state.filters.medium, toggleMedium, mediumOpen, setMediumOpen);
   renderFiltersToggle();
+  renderSidebarSections();
+}
+
+function sidebarSectionCounts() {
+  const { groupType, county, medium, day, newOnly } = state.filters;
+  return { day: day !== 'all' ? 1 : 0, group: groupType.length, county: county.length, medium: medium.length, new: newOnly ? 1 : 0 };
+}
+
+// Collapsed sections still show how many filters are on inside them, so an
+// active filter is never hidden from view.
+function renderSidebarSections() {
+  const counts = sidebarSectionCounts();
+  document.querySelectorAll('[data-sidebar-section]').forEach((section) => {
+    const key = section.dataset.sidebarSection;
+    const open = state.sidebarSections[key];
+    const toggle = section.querySelector('.chip-filters__label--toggle');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.querySelector('.section-count').textContent = counts[key] ? `(${counts[key]})` : '';
+    section.querySelector('.sidebar-section__body').hidden = !open;
+  });
+}
+
+function wireSidebarSections() {
+  document.querySelectorAll('[data-sidebar-section]').forEach((section) => {
+    const key = section.dataset.sidebarSection;
+    section.querySelector('.chip-filters__label--toggle').addEventListener('click', () => {
+      state.sidebarSections[key] = !state.sidebarSections[key];
+      // A dropdown can't stay open once its section is collapsed.
+      if (!state.sidebarSections[key] && state.openFilterPanel === key) state.openFilterPanel = null;
+      renderChips();
+    });
+  });
 }
 
 // Search is always visible, so it isn't counted; this is everything inside
@@ -2192,6 +2227,7 @@ async function init() {
   wireShareButton();
   wireResetFilters();
   wireFiltersToggle();
+  wireSidebarSections();
   wireFilterMultiSelectClose();
   wireChipRowFade();
   wireSearchInput(el.searchInput, el.searchInputSide);
