@@ -16,7 +16,7 @@ const state = {
   // means "no filter applied" (same as the old 'all' sentinel).
   // Wide layout sidebar: which filter sections are expanded. Group Type is
   // the tall one, but with Day it's what most people reach for first.
-  sidebarSections: { day: true, group: true, county: false, medium: false, new: false },
+  sidebarSections: { day: true, group: true, county: false, medium: false },
   // Narrow layout only: whether the Filters panel under the search box is
   // expanded (collapsed by default so listings start near the top).
   filtersOpen: false,
@@ -58,8 +58,8 @@ const el = {
   filtersPanel: document.getElementById('filters-panel'),
   chipsDay: document.getElementById('chips-day'),
   chipsDaySide: document.getElementById('chips-day-side'),
-  chipsNew: document.getElementById('chips-new'),
-  chipsNewSide: document.getElementById('chips-new-side'),
+  newOnly: document.getElementById('new-only'),
+  newOnlySide: document.getElementById('new-only-side'),
   chipsGroup: document.getElementById('chips-group'),
   chipsGroupWrap: document.getElementById('chips-group-wrap'),
   chipsCounty: document.getElementById('chips-county'),
@@ -581,9 +581,8 @@ function applyFilters() {
   }).sort(compareDirectory);
 }
 
-// Day and New-to-the-Tour pickers: one option is active at a time (or none,
-// for the lone toggle). Shares the chip look with the Group Type filters
-// (`.chip` narrow, `.chip-side` sidebar).
+// Day picker: one option is active at a time. Shares the chip look with the
+// Group Type filters (`.chip` narrow, `.chip-side` sidebar).
 function chipSingle(container, options, activeValue, onPick, itemClass) {
   container.innerHTML = options
     .map((opt) => `<button type="button" class="${itemClass} ${opt.value === activeValue ? `${itemClass}--active` : ''}" data-value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</button>`)
@@ -790,14 +789,6 @@ function renderChips() {
     renderChips();
     render();
   };
-  const newOptions = [{ value: 'new', label: 'First-year participants' }];
-  const toggleNew = () => {
-    state.filters.newOnly = !state.filters.newOnly;
-    if (state.filters.newOnly) track('Use Filter', { filter: 'new to the tour' });
-    renderChips();
-    render();
-  };
-
   const setCountyOpen = (open) => {
     state.openFilterPanel = open ? 'county' : null;
     renderChips();
@@ -811,9 +802,8 @@ function renderChips() {
 
   chipSingle(el.chipsDay, dayOptions, state.filters.day, pickDay, 'chip');
   chipSingle(el.chipsDaySide, dayOptions, state.filters.day, pickDay, 'chip-side');
-  const newActive = state.filters.newOnly ? 'new' : null;
-  chipSingle(el.chipsNew, newOptions, newActive, toggleNew, 'chip');
-  chipSingle(el.chipsNewSide, newOptions, newActive, toggleNew, 'chip-side');
+  el.newOnly.checked = state.filters.newOnly;
+  el.newOnlySide.checked = state.filters.newOnly;
   chipRowMulti(el.chipsGroup, groupOptions, state.filters.groupType, toggleGroupType);
   updateChipRowFade();
   filterMultiSelect(el.chipsCounty, countyOptions, state.filters.county, toggleCounty, countyOpen, setCountyOpen);
@@ -827,8 +817,8 @@ function renderChips() {
 }
 
 function sidebarSectionCounts() {
-  const { groupType, county, medium, day, newOnly } = state.filters;
-  return { day: day !== 'all' ? 1 : 0, group: groupType.length, county: county.length, medium: medium.length, new: newOnly ? 1 : 0 };
+  const { groupType, county, medium, day } = state.filters;
+  return { day: day !== 'all' ? 1 : 0, group: groupType.length, county: county.length, medium: medium.length };
 }
 
 // Collapsed sections still show how many filters are on inside them, so an
@@ -2228,6 +2218,14 @@ async function init() {
   wireResetFilters();
   wireFiltersToggle();
   wireSidebarSections();
+  [el.newOnly, el.newOnlySide].forEach((box) => {
+    box.addEventListener('change', () => {
+      state.filters.newOnly = box.checked;
+      if (box.checked) track('Use Filter', { filter: 'new to the tour' });
+      renderChips();
+      render();
+    });
+  });
   wireFilterMultiSelectClose();
   wireChipRowFade();
   wireSearchInput(el.searchInput, el.searchInputSide);

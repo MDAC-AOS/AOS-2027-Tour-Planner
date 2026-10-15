@@ -1100,6 +1100,17 @@ main {
   justify-content: center;
 }
 
+/* Lone checkbox filter (First-year participants only): no heading needed. */
+.filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  font-size: 0.85rem;
+  color: var(--color-twilight-indigo);
+  cursor: pointer;
+}
+
 .map-legend__toggle {
   display: flex;
   align-items: center;
