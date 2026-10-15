@@ -1,5 +1,6 @@
 const PLAN_STORAGE_KEY = 'aosPlanV1';
 const INSTALL_PROMPT_DISMISSED_KEY = 'aosInstallPromptDismissedV1';
+const PLAN_NOTE_DISMISSED_KEY = 'aosPlanNoteDismissedV1';
 
 const WIDE_QUERY = '(min-width: 1024px)';
 
@@ -53,6 +54,8 @@ const el = {
   resetFilters: document.getElementById('reset-filters'),
   searchInput: document.getElementById('search-input'),
   searchInputSide: document.getElementById('search-input-side'),
+  planNote: document.getElementById('plan-note'),
+  planNoteClose: document.getElementById('plan-note-close'),
   filtersToggle: document.getElementById('filters-toggle'),
   filtersToggleLabel: document.getElementById('filters-toggle-label'),
   filtersPanel: document.getElementById('filters-panel'),
@@ -863,6 +866,16 @@ function renderFiltersToggle() {
   el.filtersPanel.hidden = !state.filtersOpen;
 }
 
+// The "saved only on this device" note at the top of My Day can be closed
+// for good (remembered on this device); the share panel repeats its key tip.
+function wirePlanNote() {
+  if (localStorage.getItem(PLAN_NOTE_DISMISSED_KEY)) el.planNote.hidden = true;
+  el.planNoteClose.addEventListener('click', () => {
+    localStorage.setItem(PLAN_NOTE_DISMISSED_KEY, '1');
+    el.planNote.hidden = true;
+  });
+}
+
 function wireFiltersToggle() {
   el.filtersToggle.addEventListener('click', () => {
     state.filtersOpen = !state.filtersOpen;
@@ -1172,6 +1185,7 @@ function renderSharePanel(day, stops) {
       </div>
     ` : ''}
     <div class="share-panel__note">${state.incomingShare ? '' : (navigator.onLine ? `Anyone with this link can see your ${stops.length} ${day} stop${stops.length === 1 ? '' : 's'} in this order.` : 'Offline — the link still works once you have signal.')}</div>
+    ${state.incomingShare ? '' : '<div class="share-panel__note">To see this plan on another device, send this link to yourself.</div>'}
   `;
 
   document.getElementById('share-close').addEventListener('click', () => {
@@ -2217,6 +2231,7 @@ async function init() {
   wireShareButton();
   wireResetFilters();
   wireFiltersToggle();
+  wirePlanNote();
   wireSidebarSections();
   [el.newOnly, el.newOnlySide].forEach((box) => {
     box.addEventListener('change', () => {

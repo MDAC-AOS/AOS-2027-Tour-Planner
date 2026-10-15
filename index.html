@@ -88,7 +88,6 @@
       <div class="chip-filters__group">
         <label class="filter-checkbox"><input type="checkbox" id="new-only-side"><span>Show 1st Year Participants</span></label>
       </div>
-      <div class="sidebar__note">Your plan is saved on this device and works without signal.</div>
       <p class="privacy-note">We count anonymous app usage — no names or personal details — to show grant funders that the tour makes a difference.</p>
     </aside>
 
@@ -171,6 +170,11 @@
           </button>
         </div>
 
+        <div class="plan-note" id="plan-note">
+          <p class="plan-note__text">This plan is saved only on this device and works without signal. To see it on another phone, tap Share above and send it to yourself first.</p>
+          <button type="button" class="plan-note__close" id="plan-note-close" aria-label="Dismiss this note">✕</button>
+        </div>
+
         <div class="day-tabs" id="day-tabs">
           <button type="button" class="day-tabs__btn day-tabs__btn--active" data-day="Saturday" id="day-tab-sat"></button>
           <button type="button" class="day-tabs__btn" data-day="Sunday" id="day-tab-sun"></button>
@@ -195,8 +199,6 @@
           <div class="plan-empty__title" id="plan-empty-title"></div>
           <p class="plan-empty__hint">Tap Add on any stop and choose the day you're planning it for.</p>
         </div>
-
-        <div class="plan-footer-note">This plan is saved only on this device and works without signal. To see it on another phone, tap Share above and send it to yourself first.</div>
       </section>
     </div>
   </main>

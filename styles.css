@@ -298,16 +298,6 @@ main {
   border-radius: 3px;
 }
 
-.sidebar__note {
-  margin-top: 26px;
-  border: 2px dashed rgba(37, 53, 81, 0.28);
-  border-radius: 14px;
-  padding: 12px 13px;
-  font-size: 0.78rem;
-  line-height: 1.6;
-  color: rgba(37, 53, 81, 0.75);
-}
-
 .rail {
   display: contents;
 }
@@ -1458,13 +1448,35 @@ main {
   }
 }
 
-.plan-footer-note {
+.plan-note {
+  position: relative;
   border: 2px dashed rgba(37, 53, 81, 0.28);
   border-radius: 14px;
-  padding: 12px 14px;
-  font-size: 0.82rem;
-  line-height: 1.6;
+  padding: 8px 40px 8px 12px;
+  font-size: 0.78rem;
+  line-height: 1.45;
   color: rgba(37, 53, 81, 0.75);
+}
+
+.plan-note__text {
+  margin: 0;
+}
+
+.plan-note__close {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--color-twilight-indigo);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .map-offline-note {
