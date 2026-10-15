@@ -15,6 +15,10 @@ const state = {
   // All three support picking more than one value at once; an empty array
   // means "no filter applied" (same as the old 'all' sentinel).
   filters: { groupType: [], county: [], medium: [], search: '' },
+  // 'name' = A–Z by last name (the default); 'newest' = most recently
+  // registered first. Not a filter, so Reset puts it back but it never
+  // narrows the list.
+  sort: 'name',
   // Which mobile filter dropdown (if any) is currently open — 'county',
   // 'medium', or null. A single value instead of two independent booleans
   // so opening one always closes the other; see filterMultiSelect() below.
@@ -45,6 +49,8 @@ const el = {
   resetFilters: document.getElementById('reset-filters'),
   searchInput: document.getElementById('search-input'),
   searchInputSide: document.getElementById('search-input-side'),
+  chipsSort: document.getElementById('chips-sort'),
+  chipsSortSide: document.getElementById('chips-sort-side'),
   chipsGroup: document.getElementById('chips-group'),
   chipsGroupWrap: document.getElementById('chips-group-wrap'),
   chipsCounty: document.getElementById('chips-county'),
@@ -549,13 +555,28 @@ function matchesSearchTerm(artist, searchTerm) {
 function applyFilters() {
   const { groupType, county, medium, search } = state.filters;
   const searchTerm = search.trim().toLowerCase();
-  return state.all.filter((artist) => {
+  const matched = state.all.filter((artist) => {
     const matchesGroupType = groupType.length === 0 || groupType.includes(artist.groupType);
     const matchesCounty = county.length === 0 || county.includes(artist.county);
     const matchesMedium = medium.length === 0 || artistMedia(artist).some((m) => medium.includes(m));
     const matchesSearch = !searchTerm || matchesSearchTerm(artist, searchTerm);
     return matchesGroupType && matchesCounty && matchesMedium && matchesSearch;
-  }).sort(compareDirectory);
+  });
+  // state.all is in sheet order, and registrations are added to the bottom
+  // of the sheet, so the reverse of it is newest-first. This relies on the
+  // source sheet never being re-sorted.
+  return state.sort === 'newest' ? matched.reverse() : matched.sort(compareDirectory);
+}
+
+// Sort picker: exactly one option is always active. Shares the chip look
+// with the Group Type filters (`.chip` narrow, `.chip-side` sidebar).
+function chipSingle(container, options, activeValue, onPick, itemClass) {
+  container.innerHTML = options
+    .map((opt) => `<button type="button" class="${itemClass} ${opt.value === activeValue ? `${itemClass}--active` : ''}" data-value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</button>`)
+    .join('');
+  container.querySelectorAll(`.${itemClass}`).forEach((btn) => {
+    btn.addEventListener('click', () => onPick(btn.dataset.value));
+  });
 }
 
 // Narrow layout Group Type: horizontally-scrolling chip row, more than one
@@ -743,6 +764,15 @@ function renderChips() {
     render();
   };
 
+  const sortOptions = [{ value: 'name', label: 'A–Z' }, { value: 'newest', label: 'Newest first' }];
+  const pickSort = (value) => {
+    if (state.sort === value) return;
+    state.sort = value;
+    track('Use Filter', { filter: 'sort' });
+    renderChips();
+    render();
+  };
+
   const setCountyOpen = (open) => {
     state.openFilterPanel = open ? 'county' : null;
     renderChips();
@@ -754,6 +784,8 @@ function renderChips() {
   const countyOpen = state.openFilterPanel === 'county';
   const mediumOpen = state.openFilterPanel === 'medium';
 
+  chipSingle(el.chipsSort, sortOptions, state.sort, pickSort, 'chip');
+  chipSingle(el.chipsSortSide, sortOptions, state.sort, pickSort, 'chip-side');
   chipRowMulti(el.chipsGroup, groupOptions, state.filters.groupType, toggleGroupType);
   updateChipRowFade();
   filterMultiSelect(el.chipsCounty, countyOptions, state.filters.county, toggleCounty, countyOpen, setCountyOpen);
@@ -1612,6 +1644,7 @@ function wireSearchInput(inputEl, otherInputEl) {
 function wireResetFilters() {
   const reset = () => {
     state.filters = { groupType: [], county: [], medium: [], search: '' };
+    state.sort = 'name';
     state.openFilterPanel = null;
     el.searchInput.value = '';
     el.searchInputSide.value = '';
