@@ -52,18 +52,18 @@
 
   <main>
     <aside class="sidebar" id="sidebar" aria-label="Filter listings">
+      <div class="sidebar__result-count" id="result-count-side" aria-live="polite"></div>
       <div class="sidebar__header">
         <div class="sidebar__title">Filters</div>
         <button type="button" id="reset-filters-side" class="link-btn">Reset</button>
       </div>
-      <div class="sidebar__result-count" id="result-count-side" aria-live="polite"></div>
       <div class="chip-filters__group">
         <div class="chip-filters__label">Search by Name</div>
         <input type="search" class="search-input" id="search-input-side" placeholder="Artist, group, gallery, museum…">
       </div>
       <div class="chip-filters__group">
         <div class="chip-filters__label">Day</div>
-        <div class="chip-col" id="chips-day-side"></div>
+        <div class="chip-col chip-col--row" id="chips-day-side"></div>
       </div>
       <div class="chip-filters__group">
         <div class="chip-filters__label">Group Type</div>

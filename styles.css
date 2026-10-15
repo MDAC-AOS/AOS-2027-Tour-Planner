@@ -240,8 +240,8 @@ main {
 }
 
 .sidebar__result-count {
-  margin-top: 6px;
-  font-size: 0.82rem;
+  margin-bottom: 14px;
+  font-size: 0.9rem;
   color: var(--color-text-muted);
 }
 
@@ -253,6 +253,20 @@ main {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.chip-col--row {
+  flex-direction: row;
+  gap: 4px;
+}
+
+.chip-col--row .chip-side {
+  flex: 1;
+  min-width: 0;
+  justify-content: center;
+  padding: 8px 4px;
+  font-size: 0.8rem;
+  text-align: center;
 }
 
 .chip-side {
