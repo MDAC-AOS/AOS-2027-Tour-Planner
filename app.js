@@ -434,7 +434,7 @@ function listingMeta(artist) {
     // Galleries can be studio groups too (Gallery 209 is registered as a
     // gallery but lists its member artists), so they show the list as well.
     memberNames: isArtistGroup || category === 'gallery' || category === 'gallery-tier sponsor' ? (artist.groupMemberNames || []) : [],
-    media: showsMedium ? (artist.mediums || []) : [],
+    media: showsMedium ? [...new Set([...(artist.mediums || []), ...(artist.mediaRepresented || [])])] : [],
   };
 }
 
