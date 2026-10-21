@@ -858,7 +858,7 @@ function activeFilterCount() {
 
 function renderFiltersToggle() {
   const count = activeFilterCount();
-  el.filtersToggleLabel.textContent = count ? `Filters (${count})` : 'Filters';
+  el.filtersToggleLabel.textContent = `${state.filtersOpen ? 'Hide' : 'Show'} filters${count ? ` (${count})` : ''}`;
   el.filtersToggle.classList.toggle('filters-toggle--active', count > 0);
   el.filtersToggle.classList.toggle('filters-toggle--open', state.filtersOpen);
   el.filtersToggle.setAttribute('aria-expanded', state.filtersOpen ? 'true' : 'false');

@@ -496,7 +496,9 @@ main {
 
 .filters-toggle::after {
   content: '▾';
-  color: rgba(37, 53, 81, 0.5);
+  color: var(--color-twilight-indigo);
+  font-size: 1.15rem;
+  line-height: 1;
   flex-shrink: 0;
 }
 
