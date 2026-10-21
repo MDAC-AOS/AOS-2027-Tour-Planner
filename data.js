@@ -125,6 +125,16 @@ function splitList(raw, limit) {
   return limit ? items.slice(0, limit) : items;
 }
 
+// Multi-select answers reach the sheet either comma-joined (the formula
+// pattern above) or one per line, so media split on both.
+function parseMedia(raw) {
+  const items = String(raw || '')
+    .split(/[\n,]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return [...new Set(items)];
+}
+
 function parseGroupMemberNames(raw) {
   return splitList(raw);
 }
@@ -237,7 +247,10 @@ async function loadArtists() {
         // path (card, detail hero, gallery carousel) just works unchanged.
         imageUrls: parseImageUrls(record.imageUrl).concat(record.logoUrl ? [record.logoUrl] : []).slice(0, 3),
         socialLinks: parseSocialLinks(record.socialMedia),
-        mediaRepresented: splitList(record.mediaRepresented),
+        mediaRepresented: parseMedia(record.mediaRepresented),
+        // Individual artists' Medium question is multi-select now; older
+        // single answers are just a one-item list.
+        mediums: parseMedia(record.medium),
         veteranLabel: deriveVeteranLabel(record.tourParticipationCount),
       };
     });

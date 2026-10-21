@@ -434,7 +434,7 @@ function listingMeta(artist) {
     // Galleries can be studio groups too (Gallery 209 is registered as a
     // gallery but lists its member artists), so they show the list as well.
     memberNames: isArtistGroup || category === 'gallery' || category === 'gallery-tier sponsor' ? (artist.groupMemberNames || []) : [],
-    medium: showsMedium ? (artist.medium || '') : '',
+    media: showsMedium ? (artist.mediums || []) : [],
   };
 }
 
@@ -485,7 +485,6 @@ function cardTemplate(artist) {
   const days = artist.aosTourDays || 'Days not provided';
   const bio = bioExcerpt(artist.artistBio);
   const imageUrls = artist.imageUrls || [];
-  const { medium } = listingMeta(artist);
   const inPlan = isInPlan(artist.id);
 
   const containClass = usesContainPhoto(artist.groupType) ? ' card__photo-wrap--contain' : '';
@@ -499,7 +498,6 @@ function cardTemplate(artist) {
       <div class="card__body">
         <div class="card__tags">
           <span class="tag-solid">${escapeHtml(county)}</span>
-          ${medium ? `<span class="tag-accent">${escapeHtml(medium)}</span>` : ''}
         </div>
         <h3 class="card__name" data-open-detail="${artist.id}">${escapeHtml(name)}</h3>
         ${artist.veteranLabel ? `<span class="status-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
@@ -517,14 +515,14 @@ function cardTemplate(artist) {
 // ---------- filters ----------
 
 // A listing's searchable media: Individual Artists and Artist Group:
-// Individual Artist have exactly one (`medium`, single-select on the form);
-// Galleries and Artist Groups can have several (`mediaRepresented`, from
-// the multi-select "What mediums are represented in your space?" question).
-// Combined here so the Medium filter matches either shape the same way,
-// without ever showing a tag for the multi-select case (that's decided
-// separately in listingMeta/cardTemplate, not here).
+// Individual Artist pick them in the multi-select Medium question
+// (`mediums`; older entries have just one); Galleries and Artist Groups
+// answer "What mediums are represented in your space?" (`mediaRepresented`).
+// Combined here so the Medium filter matches either shape the same way.
+// Only individual artists' media are displayed (listing page); see
+// listingMeta.
 function artistMedia(artist) {
-  return [...(artist.medium ? [artist.medium] : []), ...(artist.mediaRepresented || [])];
+  return [...(artist.mediums || []), ...(artist.mediaRepresented || [])];
 }
 
 const NAME_SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv']);
@@ -1468,7 +1466,7 @@ function renderDetail() {
 
   const name = displayName(artist);
   const imageUrls = artist.imageUrls || [];
-  const { memberNames, medium } = listingMeta(artist);
+  const { memberNames, media } = listingMeta(artist);
   const inPlan = isInPlan(artist.id);
 
   el.detailPhoto.classList.toggle('detail-overlay__photo--contain', usesContainPhoto(artist.groupType));
@@ -1487,12 +1485,12 @@ function renderDetail() {
     <div class="card__tags">
       ${groupBadgeHtml(artist.groupType, { inline: true })}
       <span class="tag-solid">${escapeHtml(artist.county || '')}</span>
-      ${medium ? `<span class="tag-accent">${escapeHtml(medium)}</span>` : ''}
     </div>
     ${artist.veteranLabel ? `<span class="status-ribbon">${escapeHtml(artist.veteranLabel)}</span>` : ''}
     <h2 class="detail-name">${escapeHtml(name)}</h2>
     ${artist.artistBio ? `<div class="detail-bio">${paragraphsHtml(artist.artistBio, 'detail-bio__para', linkifyText)}</div>` : ''}
     ${memberNames.length ? `<p class="card__members"><strong>Artists:</strong> ${linkifyText(memberNames.join(', '))}</p>` : ''}
+    ${media.length ? `<div class="detail-section"><div class="detail-section__label">Media</div><p>${escapeHtml(media.join(', '))}</p></div>` : ''}
     <div class="detail-section"><div class="detail-section__label">AOS Tour Days</div><p>${escapeHtml(artist.aosTourDays || 'Not provided')}</p></div>
     ${artist.studioAddress ? `<div class="detail-section"><div class="detail-section__label">Address</div><p>${escapeHtml(artist.studioAddress)}</p><a class="directions-btn" href="${escapeHtml(directionsUrl(artist.studioAddress))}" target="_blank" rel="noopener" data-track-directions="listing">Get Directions</a></div>` : ''}
     ${artist.directionsNotes ? `<div class="detail-section"><div class="detail-section__label">Directions</div>${paragraphsHtml(artist.directionsNotes, 'keep-line-breaks', linkifyText)}</div>` : ''}
