@@ -428,13 +428,14 @@ function listingMeta(artist) {
   const isArtistGroup = category === 'artist group';
   const showsVenueName =
     isArtistGroup || category === 'gallery' || category === 'gallery-tier sponsor' || category === 'museum';
-  const showsMedium = category === 'individual artist' || category === 'artist group: individual artist';
+  // Museums don't answer the media question; the other four types do.
+  const showsMedia = category !== 'museum';
   return {
     showsVenueName,
     // Galleries can be studio groups too (Gallery 209 is registered as a
     // gallery but lists its member artists), so they show the list as well.
     memberNames: isArtistGroup || category === 'gallery' || category === 'gallery-tier sponsor' ? (artist.groupMemberNames || []) : [],
-    media: showsMedium ? [...new Set([...(artist.mediums || []), ...(artist.mediaRepresented || [])])] : [],
+    media: showsMedia ? [...new Set([...(artist.mediums || []), ...(artist.mediaRepresented || [])])] : [],
   };
 }
 
@@ -519,7 +520,7 @@ function cardTemplate(artist) {
 // (`mediums`; older entries have just one); Galleries and Artist Groups
 // answer "What mediums are represented in your space?" (`mediaRepresented`).
 // Combined here so the Medium filter matches either shape the same way.
-// Only individual artists' media are displayed (listing page); see
+// Shown on the listing page for every type except museums; see
 // listingMeta.
 function artistMedia(artist) {
   return [...(artist.mediums || []), ...(artist.mediaRepresented || [])];
