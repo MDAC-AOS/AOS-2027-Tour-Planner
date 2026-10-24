@@ -707,6 +707,31 @@ main {
   gap: 20px;
 }
 
+.list-group-heading {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 10px 0 -6px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid rgba(37, 53, 81, 0.15);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--color-twilight-indigo);
+}
+
+.list-group-heading:first-child {
+  margin-top: 0;
+}
+
+.list-group-heading__count {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: rgba(37, 53, 81, 0.6);
+}
+
 .card {
   background: var(--color-card-bg);
   border-radius: 14px;

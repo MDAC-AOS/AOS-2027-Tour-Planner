@@ -543,7 +543,25 @@ function directorySortKey(artist) {
   return words[words.length - 1] || name;
 }
 
+// The directory lists one type at a time, in this order: artists first (they
+// are the heart of the tour), then groups, galleries, and museums. Within each
+// type the list is alphabetical.
+const DIRECTORY_TYPE_ORDER = ['Artist', 'Artist Group', 'Gallery', 'Museum'];
+const DIRECTORY_TYPE_HEADINGS = {
+  Artist: 'Artists',
+  'Artist Group': 'Artist Groups',
+  Gallery: 'Galleries',
+  Museum: 'Museums',
+};
+
+function directoryTypeRank(artist) {
+  const rank = DIRECTORY_TYPE_ORDER.indexOf(artist.groupType);
+  return rank === -1 ? DIRECTORY_TYPE_ORDER.length : rank;
+}
+
 function compareDirectory(a, b) {
+  const byType = directoryTypeRank(a) - directoryTypeRank(b);
+  if (byType) return byType;
   const byKey = directorySortKey(a).localeCompare(directorySortKey(b), undefined, { sensitivity: 'base' });
   // Same last name (or same group name): fall back to the full name, so
   // artists sharing a surname end up ordered by first name.
@@ -888,6 +906,28 @@ function wireFiltersToggle() {
 
 // ---------- list view ----------
 
+// The cards, with a heading before each type ("Artists (21)", "Museums (8)").
+// Headings only appear when the list holds more than one type, so a list
+// filtered down to a single type isn't labeled redundantly.
+function directoryHtml(filtered) {
+  const types = new Set(filtered.map((a) => a.groupType));
+  if (types.size < 2) return filtered.map(cardTemplate).join('');
+  const counts = new Map();
+  filtered.forEach((a) => counts.set(a.groupType, (counts.get(a.groupType) || 0) + 1));
+  let currentType = null;
+  return filtered
+    .map((artist) => {
+      let heading = '';
+      if (artist.groupType !== currentType) {
+        currentType = artist.groupType;
+        const label = DIRECTORY_TYPE_HEADINGS[currentType] || currentType;
+        heading = `<h2 class="list-group-heading">${escapeHtml(label)} <span class="list-group-heading__count">${counts.get(currentType)}</span></h2>`;
+      }
+      return heading + cardTemplate(artist);
+    })
+    .join('');
+}
+
 // Bumped whenever state.all is replaced with new data (fresh fetch or
 // cached fallback) — part of renderList's rebuild signature below.
 let artistDataVersion = 0;
@@ -921,7 +961,7 @@ function renderList(filtered, { force = false } = {}) {
   }
   lastRenderedGridSignature = signature;
 
-  el.grid.innerHTML = filtered.map(cardTemplate).join('');
+  el.grid.innerHTML = directoryHtml(filtered);
   wireGalleryScrollSync(el.grid);
 }
 
