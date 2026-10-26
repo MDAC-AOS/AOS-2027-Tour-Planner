@@ -143,6 +143,16 @@ function parseImageUrls(raw) {
   return splitList(raw, 3);
 }
 
+// A listing's images, in display order: its logo first (galleries upload one),
+// then up to 3 photos. Artists have no logo, so they still show just their
+// photos. Four in total keeps a logo from crowding out a third photo.
+const MAX_LISTING_IMAGES = 4;
+
+function buildImageUrls(record) {
+  const logo = record.logoUrl ? [record.logoUrl] : [];
+  return logo.concat(parseImageUrls(record.imageUrl)).slice(0, MAX_LISTING_IMAGES);
+}
+
 function parseSocialLinks(raw) {
   return splitList(raw);
 }
@@ -241,11 +251,11 @@ async function loadArtists() {
         studioVenueName: toTitleCase(record.studioVenueName, { smallWords: true }),
         groupType: deriveGroupType(record),
         groupMemberNames: parseGroupMemberNames(record.studioGroupArtistNames),
-        // Galleries never fill in the 3-photo field (it's hidden for them on
-        // the form) — they get a single logo upload instead. Folding it into
-        // the same imageUrls array means every downstream photo-rendering
-        // path (card, detail hero, gallery carousel) just works unchanged.
-        imageUrls: parseImageUrls(record.imageUrl).concat(record.logoUrl ? [record.logoUrl] : []).slice(0, 3),
+        // Galleries upload a logo (and can now add photos too). Folding both
+        // into one imageUrls array, logo first, means every downstream
+        // photo-rendering path (card, detail hero, gallery carousel) just
+        // works unchanged.
+        imageUrls: buildImageUrls(record),
         socialLinks: parseSocialLinks(record.socialMedia),
         mediaRepresented: parseMedia(record.mediaRepresented),
         // Individual artists' Medium question is multi-select now; older
