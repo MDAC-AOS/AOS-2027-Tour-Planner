@@ -138,6 +138,9 @@ function clusterIcon(count, { dimmed = false } = {}) {
   };
 }
 
+// One clusterer per county: the library has no "only merge pins that share a
+// value" option, so each county gets its own, and pins in different counties
+// never merge into the same bubble even when they sit close together.
 function createClusterer() {
   if (!window.markerClusterer || !mapState.map) return null;
   return new markerClusterer.MarkerClusterer({
@@ -158,9 +161,13 @@ function createClusterer() {
   });
 }
 
+function countyKey(entry) {
+  return String(entry.county || '').trim().toLowerCase();
+}
+
 function clearMarkers() {
-  if (mapState.clusterer) {
-    mapState.clusterer.clearMarkers();
+  if (mapState.clusterers) {
+    mapState.clusterers.forEach((clusterer) => clusterer.clearMarkers());
   }
   mapState.markers.forEach((marker) => marker.setMap(null));
   mapState.markers = [];
@@ -260,11 +267,13 @@ function groupMarkerIcon(groupType, { dimmed = false, count = 0 } = {}) {
 function renderMapMarkers(entries) {
   clearMarkers();
   if (!mapState.map) return;
-  if (!mapState.clusterer || mapState.clustererMap !== mapState.map) {
-    mapState.clusterer = createClusterer();
+  if (!mapState.clusterers || mapState.clustererMap !== mapState.map) {
+    if (mapState.clusterers) mapState.clusterers.forEach((c) => c.setMap(null));
+    mapState.clusterers = new Map();
     mapState.clustererMap = mapState.map;
   }
-  const clusterer = mapState.clusterer;
+  const canCluster = !!window.markerClusterer;
+  const markersByCounty = new Map();
 
   const matchingIds = new Set(entries.map((entry) => entry.id));
   const source = state.showAllPins ? state.all : entries;
@@ -289,11 +298,14 @@ function renderMapMarkers(entries) {
       position,
       // With the clusterer, it decides when each pin is drawn; without it
       // (add-on couldn't load) every pin is placed on the map directly.
-      map: clusterer ? null : mapState.map,
+      map: canCluster ? null : mapState.map,
       icon: groupMarkerIcon(anchor.groupType, { dimmed: !isActive, count: group.length }),
       zIndex: isActive ? 2 : 1,
     });
     marker.aosDimmed = !isActive;
+    const county = countyKey(anchor);
+    if (!markersByCounty.has(county)) markersByCounty.set(county, []);
+    markersByCounty.get(county).push(marker);
 
     marker.addListener('click', () => {
       if (group.length === 1) {
@@ -307,8 +319,13 @@ function renderMapMarkers(entries) {
     if (isActive) bounds.extend(position);
   });
 
-  if (clusterer) {
-    clusterer.addMarkers(mapState.markers);
+  if (canCluster) {
+    markersByCounty.forEach((markers, county) => {
+      if (!mapState.clusterers.has(county)) {
+        mapState.clusterers.set(county, createClusterer());
+      }
+      mapState.clusterers.get(county).addMarkers(markers);
+    });
   }
 
   if (!bounds.isEmpty()) {
