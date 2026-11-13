@@ -116,17 +116,20 @@ function loadClustererScript() {
 
 // Zoom clusters: pins that are close together at the current zoom level merge
 // into one round yellow bubble with a count, and split apart as the visitor
-// zooms in (or taps the bubble). Deliberately a different look from the small
-// navy corner badge, which means "several stops at the very same place".
+// zooms in (or taps the bubble). Drawn like the other pins (same 30px size,
+// white outline, no shadow) but yellow, so it can't be mistaken for a stop
+// type. Deliberately different from the small navy corner badge, which means
+// "several stops at the very same place".
 function clusterIcon(count, { dimmed = false } = {}) {
   const text = String(count);
-  const size = count >= 10 ? 46 : 40;
+  const size = count >= 10 ? 34 : 30;
   const r = size / 2;
+  const strokeWidth = 2;
   const fill = dimmed ? '#c3c7cf' : '#fad62a';
   const ink = dimmed ? '#ffffff' : '#253551';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
-    `<circle cx="${r}" cy="${r}" r="${r - 1.5}" fill="${fill}" stroke="#253551" stroke-width="3"/>` +
-    `<text x="${r}" y="${r + 6}" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-weight="700" font-size="17" fill="${ink}">${text}</text>` +
+    `<circle cx="${r}" cy="${r}" r="${r - strokeWidth / 2}" fill="${fill}" stroke="#ffffff" stroke-width="${strokeWidth}"/>` +
+    `<text x="${r}" y="${r + 5}" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-weight="700" font-size="15" fill="${ink}">${text}</text>` +
     `</svg>`;
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
