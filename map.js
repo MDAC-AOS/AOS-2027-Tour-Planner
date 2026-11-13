@@ -20,7 +20,9 @@ function loadGoogleMaps() {
     }
     window.__onGoogleMapsLoaded = () => {
       mapState.loaded = true;
-      resolve();
+      // The zoom-cluster add-on is a nicety: if it can't load, the map still
+      // works, just without merging nearby pins at wide zoom levels.
+      loadClustererScript().then(resolve);
     };
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(CONFIG.GOOGLE_MAPS_API_KEY)}&callback=__onGoogleMapsLoaded`;
@@ -95,7 +97,64 @@ function groupEntriesByLocation(entries) {
   return [...groups.values()];
 }
 
+// Loads the self-hosted marker clusterer (vendor/markerclusterer.min.js).
+// Always resolves, even if the file can't load.
+function loadClustererScript() {
+  return new Promise((resolve) => {
+    if (window.markerClusterer) {
+      resolve();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'vendor/markerclusterer.min.js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => resolve();
+    document.head.appendChild(script);
+  });
+}
+
+// Zoom clusters: pins that are close together at the current zoom level merge
+// into one round yellow bubble with a count, and split apart as the visitor
+// zooms in (or taps the bubble). Deliberately a different look from the small
+// navy corner badge, which means "several stops at the very same place".
+function clusterIcon(count, { dimmed = false } = {}) {
+  const text = String(count);
+  const size = count >= 10 ? 46 : 40;
+  const r = size / 2;
+  const fill = dimmed ? '#c3c7cf' : '#fad62a';
+  const ink = dimmed ? '#ffffff' : '#253551';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
+    `<circle cx="${r}" cy="${r}" r="${r - 1.5}" fill="${fill}" stroke="#253551" stroke-width="3"/>` +
+    `<text x="${r}" y="${r + 6}" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-weight="700" font-size="17" fill="${ink}">${text}</text>` +
+    `</svg>`;
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(size, size),
+    anchor: new google.maps.Point(r, r),
+  };
+}
+
+function createClusterer() {
+  if (!window.markerClusterer || !mapState.map) return null;
+  return new markerClusterer.MarkerClusterer({
+    map: mapState.map,
+    markers: [],
+    renderer: {
+      render: ({ count, position, markers }) =>
+        new google.maps.Marker({
+          position,
+          icon: clusterIcon(count, { dimmed: markers.every((marker) => marker.aosDimmed) }),
+          zIndex: 3,
+        }),
+    },
+  });
+}
+
 function clearMarkers() {
+  if (mapState.clusterer) {
+    mapState.clusterer.clearMarkers();
+  }
   mapState.markers.forEach((marker) => marker.setMap(null));
   mapState.markers = [];
 }
@@ -194,6 +253,11 @@ function groupMarkerIcon(groupType, { dimmed = false, count = 0 } = {}) {
 function renderMapMarkers(entries) {
   clearMarkers();
   if (!mapState.map) return;
+  if (!mapState.clusterer || mapState.clustererMap !== mapState.map) {
+    mapState.clusterer = createClusterer();
+    mapState.clustererMap = mapState.map;
+  }
+  const clusterer = mapState.clusterer;
 
   const matchingIds = new Set(entries.map((entry) => entry.id));
   const source = state.showAllPins ? state.all : entries;
@@ -216,10 +280,13 @@ function renderMapMarkers(entries) {
     const position = { lat: parseFloat(anchor.latitude), lng: parseFloat(anchor.longitude) };
     const marker = new google.maps.Marker({
       position,
-      map: mapState.map,
+      // With the clusterer, it decides when each pin is drawn; without it
+      // (add-on couldn't load) every pin is placed on the map directly.
+      map: clusterer ? null : mapState.map,
       icon: groupMarkerIcon(anchor.groupType, { dimmed: !isActive, count: group.length }),
       zIndex: isActive ? 2 : 1,
     });
+    marker.aosDimmed = !isActive;
 
     marker.addListener('click', () => {
       if (group.length === 1) {
@@ -232,6 +299,10 @@ function renderMapMarkers(entries) {
     mapState.markers.push(marker);
     if (isActive) bounds.extend(position);
   });
+
+  if (clusterer) {
+    clusterer.addMarkers(mapState.markers);
+  }
 
   if (!bounds.isEmpty()) {
     mapState.map.fitBounds(bounds, 40);
