@@ -1094,6 +1094,26 @@ main {
   margin-bottom: 10px;
 }
 
+.map-legend__title--spaced {
+  margin-top: 16px;
+}
+
+.map-legend__numbers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px 12px;
+}
+
+.map-legend__numbers .map-legend__item {
+  align-items: flex-start;
+  line-height: 1.35;
+}
+
+.map-legend__swatch--wide {
+  width: 30px;
+  height: 30px;
+}
+
 .map-legend__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

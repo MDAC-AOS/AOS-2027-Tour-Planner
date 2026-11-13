@@ -140,6 +140,10 @@ function createClusterer() {
   return new markerClusterer.MarkerClusterer({
     map: mapState.map,
     markers: [],
+    // radius = how close (in screen pixels) pins must be to merge. 60 was the
+    // library default and made too many bubbles; 30 keeps only truly
+    // crowded pins together.
+    algorithm: new markerClusterer.SuperClusterAlgorithm({ radius: 30, maxZoom: 16 }),
     renderer: {
       render: ({ count, position, markers }) =>
         new google.maps.Marker({

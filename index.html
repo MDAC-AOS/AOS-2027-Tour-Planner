@@ -145,7 +145,21 @@
         <div class="map-legend">
           <div class="map-legend__title">Legend — pins by group type</div>
           <div class="map-legend__grid" id="map-legend-grid"></div>
-          <div class="map-legend__note">A number on a pin means several stops are in the same area — tap it to see the list.</div>
+          <div class="map-legend__title map-legend__title--spaced">Legend — numbers</div>
+          <div class="map-legend__numbers">
+            <div class="map-legend__item">
+              <span class="map-legend__swatch map-legend__swatch--wide" aria-hidden="true">
+                <svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#fad62a" stroke="#253551" stroke-width="2.5"/><text x="15" y="20" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-weight="700" font-size="14" fill="#253551">3</text></svg>
+              </span>
+              <span>Stops near each other. Tap it or zoom in to see them separately.</span>
+            </div>
+            <div class="map-legend__item">
+              <span class="map-legend__swatch map-legend__swatch--wide" aria-hidden="true">
+                <svg width="30" height="30" viewBox="0 0 30 30"><rect x="2" y="7" width="21" height="21" rx="5" fill="#e1e4ea" stroke="#253551" stroke-width="2"/><circle cx="23" cy="9" r="7" fill="#253551" stroke="#ffffff" stroke-width="1.5"/><text x="23" y="12.5" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-weight="700" font-size="10" fill="#ffffff">2</text></svg>
+              </span>
+              <span>Several stops at the same address. Tap it to see the list.</span>
+            </div>
+          </div>
           <div class="map-legend__note" id="map-legend-note">Map pins follow your filter choices. To also see locations outside your filters, check the box below. They'll show in gray.</div>
           <label class="map-legend__toggle">
             <input type="checkbox" id="show-all-pins">
