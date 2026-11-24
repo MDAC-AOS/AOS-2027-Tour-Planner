@@ -109,6 +109,9 @@ const el = {
   detailTopbar: document.getElementById('detail-topbar'),
   detailShare: document.getElementById('detail-share-btn'),
   detailAddTop: document.getElementById('detail-add-top'),
+  noticeBanner: document.getElementById('notice-banner'),
+  noticeBannerText: document.getElementById('notice-banner-text'),
+  noticeBannerDismiss: document.getElementById('notice-banner-dismiss'),
   installBanner: document.getElementById('install-banner'),
   installBannerText: document.getElementById('install-banner-text'),
   installBannerAction: document.getElementById('install-banner-action'),
@@ -2158,8 +2161,51 @@ function loadCachedArtists() {
 const DATA_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 let lastArtistFetchAt = 0;
 
+// ---------- site notice (typed into the "Notice" tab of the public sheet) ----------
+
+const NOTICE_CACHE_KEY = 'aosLastNoticeV1';
+const NOTICE_DISMISSED_KEY = 'aosNoticeDismissedV1';
+let currentNoticeText = '';
+
+function renderNotice(text) {
+  currentNoticeText = text || '';
+  let dismissed = '';
+  try { dismissed = localStorage.getItem(NOTICE_DISMISSED_KEY) || ''; } catch (err) { /* storage unavailable */ }
+  // A closed notice stays closed until its wording changes.
+  if (!currentNoticeText || dismissed === currentNoticeText) {
+    el.noticeBanner.hidden = true;
+    return;
+  }
+  el.noticeBannerText.innerHTML = linkifyText(currentNoticeText);
+  el.noticeBanner.hidden = false;
+}
+
+async function refreshNotice() {
+  if (!navigator.onLine) return;
+  try {
+    const text = await loadNotice();
+    try { localStorage.setItem(NOTICE_CACHE_KEY, text); } catch (err) { /* storage unavailable */ }
+    renderNotice(text);
+  } catch (err) {
+    // No "Notice" tab, or the sheet is briefly unavailable: keep whatever is showing.
+    console.warn('Notice check skipped', err);
+  }
+}
+
+function wireNotice() {
+  let cached = '';
+  try { cached = localStorage.getItem(NOTICE_CACHE_KEY) || ''; } catch (err) { /* storage unavailable */ }
+  renderNotice(cached);
+  el.noticeBannerDismiss.addEventListener('click', () => {
+    try { localStorage.setItem(NOTICE_DISMISSED_KEY, currentNoticeText); } catch (err) { /* storage unavailable */ }
+    el.noticeBanner.hidden = true;
+  });
+  refreshNotice();
+}
+
 async function refreshArtistData() {
   if (!navigator.onLine) return;
+  refreshNotice();
   try {
     const fresh = await loadArtists();
     assignArtistIds(fresh);
@@ -2192,8 +2238,10 @@ async function init() {
   setStatus('Loading listings…');
   loadPlanFromStorage();
   renderConnection();
+  wireNotice();
   window.addEventListener('online', () => {
     renderConnection();
+    refreshNotice();
     // Opened for the first time with no signal: nothing ever loaded, and
     // none of the app is wired up. Coming back online should just start
     // over, not leave a misleading "no stops match" screen.

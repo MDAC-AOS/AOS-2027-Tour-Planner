@@ -165,6 +165,56 @@ button {
 
 /* ---------- install prompt banner ---------- */
 
+.notice-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #fff4c2;
+  border-bottom: 2px solid var(--color-golden-yellow, #fad62a);
+  color: var(--color-twilight-indigo, #253551);
+}
+
+.notice-banner[hidden] {
+  display: none;
+}
+
+.notice-banner__label {
+  flex-shrink: 0;
+  margin-top: 2px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-twilight-indigo, #253551);
+  color: #ffffff;
+  font-family: var(--font-meta);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.notice-banner__text {
+  flex: 1;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.notice-banner__text a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.notice-banner__dismiss {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 4px;
+  cursor: pointer;
+}
+
 .install-banner {
   display: flex;
   align-items: center;

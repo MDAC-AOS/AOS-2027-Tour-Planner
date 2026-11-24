@@ -75,6 +75,28 @@ function buildSheetUrl() {
   return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&headers=1&gid=${encodeURIComponent(SHEET_GID)}`;
 }
 
+// An optional site-wide notice (a temporary problem, a weather change, ...).
+// It lives on a tab named "Notice" in the public sheet: cell A1 holds the label
+// "Site notice" and cell B1 holds the message shown at the top of the app. An
+// empty B1, or no such tab, shows nothing. The A1 label is a safety check:
+// Google answers a request for a missing tab with the FIRST tab's cells
+// instead of an error, and those must never be shown as a notice.
+function buildNoticeUrl() {
+  const { SHEET_ID } = CONFIG;
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&headers=0&sheet=Notice&range=A1:B1`;
+}
+
+async function loadNotice() {
+  const response = await fetch(buildNoticeUrl());
+  if (!response.ok) return '';
+  const table = parseGvizResponse(await response.text());
+  const cells = (table && table.rows && table.rows[0] && table.rows[0].c) || [];
+  const label = cells[0] && cells[0].v !== null && cells[0].v !== undefined ? String(cells[0].v) : '';
+  if (label.trim().toLowerCase() !== 'site notice') return '';
+  const value = cells[1] && cells[1].v !== null && cells[1].v !== undefined ? String(cells[1].v) : '';
+  return value.replace(/\s+/g, ' ').trim().slice(0, 400);
+}
+
 function parseGvizResponse(text) {
   const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?\s*$/);
   if (!match) {
